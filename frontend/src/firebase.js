@@ -8,7 +8,7 @@ const firebaseConfig = {
   projectId: "ai-resume-helper-5d28a",
   storageBucket: "ai-resume-helper-5d28a.appspot.com",
   messagingSenderId: "401881371287",
-  appId: "1:401881371287:web:557cd250bd02ca4c6ecfd2"
+  appId: "1:401881371287:web:557cd250bd02ca4c6ecfd2",
 };
 
 const app = initializeApp(firebaseConfig);
