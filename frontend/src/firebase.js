@@ -1,24 +1,19 @@
-// firebase.js
+// frontend/src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-/* Paste your Firebase web config here: do NOT commit secrets other than this config (this config is public-ish) */
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
-  projectId: "YOUR_FIREBASE_PROJECT_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
+  apiKey: "AIzaSyBKkEfqKajj_5OouYFRROIvF6FFgeT5N8o",
+  authDomain: "ai-resume-helper-5d28a.firebaseapp.com",
+  projectId: "ai-resume-helper-5d28a",
+  storageBucket: "ai-resume-helper-5d28a.firebasestorage.app",
+  messagingSenderId: "401881371287",
+  appId: "1:401881371287:web:557cd250bd02ca4c6ecfd2",
+  measurementId: "G-52F5X0N2Z2"
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const provider = new GoogleAuthProvider();
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-export async function googleLogin() {
-  const result = await signInWithPopup(auth, provider);
-  return result.user; // has email, displayName, photoURL
-}
-
-export function doLogout() {
-  return signOut(auth);
-}
+export { auth, provider };
