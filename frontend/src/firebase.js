@@ -1,19 +1,13 @@
-// frontend/src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBKkEfqKajj_5OouYFRROIvF6FFgeT5N8o",
-  authDomain: "ai-resume-helper-5d28a.firebaseapp.com",
-  projectId: "ai-resume-helper-5d28a",
-  storageBucket: "ai-resume-helper-5d28a.firebasestorage.app",
-  messagingSenderId: "401881371287",
-  appId: "1:401881371287:web:557cd250bd02ca4c6ecfd2",
-  measurementId: "G-52F5X0N2Z2"
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
+  projectId: "YOUR_FIREBASE_PROJECT_ID",
+  storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
+  appId: "YOUR_FIREBASE_APP_ID",
+  measurementId: "YOUR_FIREBASE_MEASUREMENT_ID",
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-
-export { auth, provider };
+export const app = initializeApp(firebaseConfig);
