@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com"; // Use your backend URL
+const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
 export default function ResumeUploader({ onAnalysis }) {
   const [file, setFile] = useState(null);
@@ -32,7 +32,11 @@ export default function ResumeUploader({ onAnalysis }) {
 
   return (
     <form onSubmit={handleUpload}>
-      <input type="file" accept=".docx,.txt" onChange={(e) => setFile(e.target.files[0])} />
+      <input
+        type="file"
+        accept=".docx,.txt"
+        onChange={(e) => setFile(e.target.files[0])}
+      />
       <button type="submit" disabled={loading}>
         {loading ? "Analyzing..." : "Upload & Analyze"}
       </button>
