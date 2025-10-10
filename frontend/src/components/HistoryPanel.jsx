@@ -1,28 +1,22 @@
-import { useEffect, useState } from "react";
+import React from "react";
 
-export default function HistoryPanel({ user }) {
-  const [history, setHistory] = useState([]);
-
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem(`history_${user.uid}`)) || [];
-    setHistory(saved);
-  }, [user]);
+export default function HistoryPanel() {
+  // For now dummy data
+  const previous = [
+    { id: 1, score: 85, name: "John Doe" },
+    { id: 2, score: 78, name: "Jane Smith" },
+  ];
 
   return (
-    <div className="history-panel">
-      <h3>Previous Analyses</h3>
-      {history.length === 0 ? (
-        <p>No previous results.</p>
-      ) : (
-        <ul>
-          {history.map((item, i) => (
-            <li key={i}>
-              <strong>Score:</strong> {item.score} / 100<br />
-              <small>{item.date}</small>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div>
+      <h2>Previous Analyses</h2>
+      <ul>
+        {previous.map((p) => (
+          <li key={p.id}>
+            {p.name}: {p.score} / 100
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
