@@ -1,13 +1,18 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { app } from "../firebase";
 
-const Login = () => {
-  const auth = getAuth();
-  const provider = new GoogleAuthProvider();
+const provider = new GoogleAuthProvider();
+const auth = getAuth(app);
 
-  const handleLogin = async () => {
+export default function Login() {
+  const navigate = useNavigate();
+
+  const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, provider);
+      navigate("/dashboard");
     } catch (err) {
       console.error(err);
       alert("Login failed");
@@ -15,11 +20,10 @@ const Login = () => {
   };
 
   return (
-    <div className="login-page">
-      <h2>Sign in to AI Resume Analyzer</h2>
-      <button onClick={handleLogin}>Continue with Google</button>
+    <div style={{ display: "flex", justifyContent: "center", marginTop: "100px" }}>
+      <button onClick={handleGoogleLogin} style={{ fontSize: "18px", padding: "10px 20px" }}>
+        Continue with Google
+      </button>
     </div>
   );
-};
-
-export default Login;
+}
