@@ -1,18 +1,14 @@
-import { useState } from "react";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 
 function App() {
-  const [user, setUser] = useState(null);
-
   return (
-    <div className="app-container">
-      {user ? (
-        <Dashboard user={user} onLogout={() => setUser(null)} />
-      ) : (
-        <Login onLogin={setUser} />
-      )}
-    </div>
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+    </Routes>
   );
 }
 
