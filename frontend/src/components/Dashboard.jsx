@@ -1,28 +1,24 @@
+import React, { useState } from "react";
 import ResumeUploader from "./ResumeUploader";
 import HistoryPanel from "./HistoryPanel";
-import { signOut } from "firebase/auth";
-import { auth } from "../firebase";
 
-export default function Dashboard({ user, onLogout }) {
-  const logout = async () => {
-    await signOut(auth);
-    onLogout();
-  };
+export default function Dashboard() {
+  const [analysis, setAnalysis] = useState(null);
 
   return (
-    <div className="dashboard">
-      <header>
-        <h2>Welcome, {user.displayName}</h2>
-        <button onClick={logout}>Logout</button>
-      </header>
-      <main>
-        <div className="main-content">
-          <ResumeUploader user={user} />
-        </div>
-        <aside>
-          <HistoryPanel user={user} />
-        </aside>
-      </main>
+    <div style={{ display: "flex", gap: "20px" }}>
+      <div style={{ flex: 3 }}>
+        <h1>Upload Resume</h1>
+        <ResumeUploader onAnalysis={setAnalysis} />
+        {analysis && (
+          <pre style={{ whiteSpace: "pre-wrap", marginTop: "20px" }}>
+            {JSON.stringify(analysis, null, 2)}
+          </pre>
+        )}
+      </div>
+      <div style={{ flex: 1 }}>
+        <HistoryPanel />
+      </div>
     </div>
   );
 }
