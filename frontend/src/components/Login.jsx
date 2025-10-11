@@ -3,24 +3,23 @@ import React, { useState, useEffect } from "react";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
-export default function Login() {
+export default function Login({ onLoginName }) {
   const [name, setName] = useState("");
-  const [askName, setAskName] = useState(false);
 
   useEffect(() => {
-    // Check if user already entered a display name
-    const storedName = localStorage.getItem("displayName");
-    if (!storedName) setAskName(true);
+    const stored = localStorage.getItem("displayName");
+    if (stored) {
+      setName(stored);
+    }
   }, []);
 
   const handleGoogleLogin = () => {
-    if (askName && !name.trim()) {
+    if (!name.trim()) {
       alert("Please enter your display name first.");
       return;
     }
-    if (askName) {
-      localStorage.setItem("displayName", name.trim());
-    }
+    localStorage.setItem("displayName", name.trim());
+    onLoginName?.(name.trim()); // notify parent
     window.location.href = `${BACKEND_URL}/auth/google`;
   };
 
@@ -29,7 +28,7 @@ export default function Login() {
       <div style={styles.card}>
         <div style={styles.brandRow}>
           <div style={styles.logo}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" fill="#2f9bff" />
               <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff"/>
             </svg>
@@ -42,7 +41,7 @@ export default function Login() {
           Sign in with Google to upload resumes, view historic scores and get actionable suggestions.
         </p>
 
-        {askName && (
+        {!name && (
           <input
             type="text"
             placeholder="Enter display name"
@@ -137,5 +136,7 @@ const styles = {
     borderRadius: 10,
     border: "1px solid #ccc",
     fontSize: 16,
+    background: "#fff",
+    color: "#111",
   },
 };
