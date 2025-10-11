@@ -1,77 +1,126 @@
 import React, { useEffect, useState } from "react";
 
 export default function Dashboard() {
+  const [displayName, setDisplayName] = useState("");
   const [user, setUser] = useState(null);
-  const [name, setName] = useState("");
-  const [showNamePrompt, setShowNamePrompt] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const res = await fetch("https://ai-resume-helper-35j6.onrender.com/api/user", {
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (data.success) {
-        setUser(data.user);
-        if (!data.user.name) setShowNamePrompt(true);
-      } else {
-        window.location.href = "/login";
-      }
-    };
-    fetchUser();
+    const storedUser = localStorage.getItem("user");
+    const storedName = localStorage.getItem("displayName");
+
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+
+    if (storedName) {
+      setDisplayName(storedName);
+    } else if (storedUser) {
+      // fallback to Google name if no custom name
+      const data = JSON.parse(storedUser);
+      setDisplayName(data.name || "User");
+    }
   }, []);
 
-  const saveDisplayName = async () => {
-    await fetch("https://ai-resume-helper-35j6.onrender.com/api/set-displayname", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ name }),
-    });
-    setShowNamePrompt(false);
-    setUser({ ...user, name });
+  const handleLogout = async () => {
+    try {
+      await fetch("https://ai-resume-helper-35j6.onrender.com/logout", {
+        method: "GET",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    }
+    localStorage.removeItem("user");
+    localStorage.removeItem("displayName");
+    window.location.href = "/";
   };
 
-  const handleLogout = () => {
-    window.location.href = "https://ai-resume-helper-35j6.onrender.com/logout";
-  };
-
-  if (showNamePrompt) {
+  if (!user) {
     return (
-      <div style={{ textAlign: "center", padding: "40px" }}>
-        <h2>Welcome! Please set your display name:</h2>
-        <input
-          type="text"
-          placeholder="Enter display name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={{ padding: "8px", marginTop: "10px" }}
-        />
-        <button onClick={saveDisplayName} style={{ marginLeft: "10px", padding: "8px" }}>
-          Save
+      <div
+        style={{
+          backgroundColor: "#0088cc",
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          color: "white",
+          flexDirection: "column",
+        }}
+      >
+        <h2>Session expired. Please log in again.</h2>
+        <button
+          style={{
+            backgroundColor: "white",
+            color: "#0088cc",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            marginTop: "20px",
+          }}
+          onClick={() => (window.location.href = "/")}
+        >
+          Go to Login
         </button>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: "#e6f2ff", height: "100vh", textAlign: "center" }}>
-      <h1 style={{ padding: "30px", color: "#007acc" }}>
-        Welcome, {user?.name || user?.email || "User"}!
-      </h1>
-      <button
-        onClick={handleLogout}
+    <div
+      style={{
+        backgroundColor: "#f4f8fb",
+        minHeight: "100vh",
+        padding: "30px",
+      }}
+    >
+      <div
         style={{
-          backgroundColor: "#007acc",
+          backgroundColor: "#0088cc",
           color: "white",
-          border: "none",
-          padding: "10px 20px",
-          borderRadius: "5px",
-          cursor: "pointer",
+          padding: "20px",
+          borderRadius: "12px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "30px",
         }}
       >
-        Logout
-      </button>
+        <h1>Welcome, {displayName} 👋</h1>
+        <button
+          onClick={handleLogout}
+          style={{
+            backgroundColor: "white",
+            color: "#0088cc",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "500",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+
+      {/* === Main Resume Section === */}
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "30px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h2 style={{ color: "#0088cc", marginBottom: "20px" }}>
+          Resume Analyzer Dashboard
+        </h2>
+        <p>
+          Here you can upload your resume, analyze job descriptions, and get AI
+          feedback to improve your resume.
+        </p>
+      </div>
     </div>
   );
 }
