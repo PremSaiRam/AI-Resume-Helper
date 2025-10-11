@@ -7,57 +7,62 @@ export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [askName, setAskName] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
-    // Check if user info is stored in localStorage
+    // Check if user is already saved in localStorage for this email
     const savedUser = JSON.parse(localStorage.getItem("user") || "null");
     if (savedUser) {
       onLogin(savedUser);
     }
   }, []);
 
-  // Redirect to Google OAuth
   const handleGoogleLogin = () => {
     setLoading(true);
     window.location.href = `${BACKEND_URL}/auth/google`;
   };
 
-  // Called after display name is entered
   const handleSubmitName = () => {
     if (!displayName.trim()) return;
     const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-    savedUser.displayName = displayName.trim();
-    localStorage.setItem("user", JSON.stringify(savedUser));
-    onLogin(savedUser);
+    const newUser = { ...savedUser, displayName };
+    localStorage.setItem("user", JSON.stringify(newUser));
+    onLogin(newUser);
   };
 
-  // Check if Google redirected back with login info
+  // Check if returning from Google OAuth
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/user`, { credentials: "include" });
-        if (res.ok) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("logged_in") === "true") {
+      const fetchUser = async () => {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/user`, {
+            credentials: "include",
+          });
+          if (!res.ok) {
+            setLoading(false);
+            return;
+          }
           const user = await res.json();
-          // If displayName already exists, log in
-          if (user.displayName) {
-            localStorage.setItem("user", JSON.stringify(user));
-            onLogin(user);
+
+          // If displayName already exists, log in directly
+          const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+          if (savedUser.email === user.emails?.[0]?.value && savedUser.displayName) {
+            onLogin(savedUser);
           } else {
             // Ask for display name
-            localStorage.setItem("user", JSON.stringify(user));
             setAskName(true);
+            setUserEmail(user.emails?.[0]?.value);
+            localStorage.setItem("user", JSON.stringify({ email: user.emails?.[0]?.value }));
           }
-        } else {
+        } catch (err) {
+          console.error(err);
+        } finally {
           setLoading(false);
+          // Remove query param for cleanliness
+          window.history.replaceState({}, document.title, "/");
         }
-      } catch (err) {
-        console.error(err);
-        setLoading(false);
-      }
-    };
-
-    // Only fetch user if returning from Google OAuth
-    if (window.location.search.includes("logged_in=true")) {
+      };
       fetchUser();
     }
   }, []);
@@ -69,7 +74,7 @@ export default function Login({ onLogin }) {
 
         {askName ? (
           <>
-            <p style={{ marginBottom: 10, color: "#356" }}>Enter your display name:</p>
+            <p style={{ marginBottom: 10, color: "#356" }}>Enter your display name for {userEmail}:</p>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -81,11 +86,9 @@ export default function Login({ onLogin }) {
             </button>
           </>
         ) : (
-          <>
-            <button onClick={handleGoogleLogin} style={styles.button}>
-              {loading ? "Redirecting..." : "Continue with Google"}
-            </button>
-          </>
+          <button onClick={handleGoogleLogin} style={styles.button}>
+            {loading ? "Redirecting..." : "Continue with Google"}
+          </button>
         )}
       </div>
     </div>
