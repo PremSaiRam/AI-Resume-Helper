@@ -6,17 +6,16 @@ const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // wait for backend response
 
   useEffect(() => {
-    // If redirected after Google login, the backend sets ?logged_in=true
-    const params = new URLSearchParams(window.location.search);
-    const loggedIn = params.get("logged_in");
-
-    if (loggedIn && !user) {
-      fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
-        .then((r) => r.json())
-        .then((data) => {
-          // Ensure we have displayName and photos for Google user
+    // Always fetch user from backend to see if session exists
+    fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data || data.error) {
+          setUser(null); // not logged in
+        } else {
           const profile = {
             ...data,
             displayName: data.displayName || data.name || (data.emails?.[0]?.value?.split("@")[0] || "User"),
@@ -30,17 +29,19 @@ export default function App() {
                   },
                 ],
           };
-
           setUser(profile);
+        }
+      })
+      .catch((e) => {
+        console.log("User fetch failed", e);
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-          // Clean URL for aesthetics
-          window.history.replaceState({}, document.title, "/");
-        })
-        .catch((e) => {
-          console.log("User fetch failed", e);
-        });
-    }
-  }, [user]);
+  if (loading) {
+    return <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>Loading...</div>;
+  }
 
   return user ? <Dashboard user={user} /> : <Login />;
 }
