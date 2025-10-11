@@ -1,4 +1,3 @@
-// src/components/Dashboard.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import ResumeUploader from "./ResumeUploader.jsx";
 
@@ -38,9 +37,7 @@ function CircleProgress({ value = 0, size = 96 }) {
 
 function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" }) {
   const pad = 4;
-  if (!values || values.length === 0) {
-    return <svg width={width} height={height}></svg>;
-  }
+  if (!values || values.length === 0) return <svg width={width} height={height}></svg>;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
@@ -83,7 +80,6 @@ export default function Dashboard({ user }) {
 
   // handle new result from uploader
   const onResult = (result) => {
-    // result expected to be JSON { score, strengths, weaknesses, suggestions } or text fallback
     if (!result) return;
     setAnalysis(result);
     if (result?.score) {
@@ -122,13 +118,20 @@ export default function Dashboard({ user }) {
 
   // logout
   const handleLogout = () => {
-    // redirect to backend logout which returns to login page
     window.location.href = `${BACKEND_URL}/logout`;
   };
 
-  // pick name and photo
-  const displayName = user?.displayName || user?.name || (user?.emails && user.emails[0]?.value) || "User";
-  const photo = user?.photos?.[0]?.value || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2f9bff&color=fff&size=128`;
+  // --- UPDATED: display name and avatar ---
+  const displayName =
+    user?.displayName ||
+    user?.name ||
+    (user?.emails?.[0]?.value ? user.emails[0].value.split("@")[0] : "User");
+
+  const photo =
+    user?.photos?.[0]?.value ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2f9bff&color=fff&size=128`;
+
+  // ---------------------------------------
 
   return (
     <div style={styles.page}>
@@ -149,7 +152,17 @@ export default function Dashboard({ user }) {
             <div style={{ fontSize: 12, color: "#164e4e" }}>{user?.emails?.[0]?.value || ""}</div>
           </div>
 
-          <img src={photo} alt="avatar" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", boxShadow: "0 6px 18px rgba(0,0,0,0.12)" }} />
+          <img
+            src={photo}
+            alt="avatar"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              objectFit: "cover",
+              boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+            }}
+          />
 
           <button onClick={handleLogout} style={styles.logoutBtn}>
             Logout
@@ -158,13 +171,14 @@ export default function Dashboard({ user }) {
       </header>
 
       <main style={styles.main}>
-        {/* Left content */}
         <section style={styles.left}>
           <div style={styles.peacockCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h2 style={{ margin: 0, color: "#ffffff" }}>Upload your resume</h2>
-                <p style={{ margin: "6px 0 0 0", color: "#dff7f6" }}>Drop a DOCX or TXT file and get a score + suggestions.</p>
+                <p style={{ margin: "6px 0 0 0", color: "#dff7f6" }}>
+                  Drop a DOCX or TXT file and get a score + suggestions.
+                </p>
               </div>
 
               <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
@@ -205,7 +219,6 @@ export default function Dashboard({ user }) {
           )}
         </section>
 
-        {/* Right History */}
         <aside style={styles.right}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 800, color: "#073737", fontSize: 16 }}>Resume History</div>
