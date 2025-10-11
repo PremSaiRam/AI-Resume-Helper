@@ -2,47 +2,43 @@
 import express from "express";
 import session from "express-session";
 import passport from "passport";
-import GoogleStrategy from "passport-google-oauth20";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import dotenv from "dotenv";
 import cors from "cors";
-import path from "path";
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
+// CORS setup
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
-app.use(express.json());
 
-// Session setup
+// Middleware
+app.use(express.json());
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "somesecretkey",
+    secret: process.env.SESSION_SECRET || "defaultsecret",
     resave: false,
     saveUninitialized: false,
   })
 );
-
-// Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Passport Google OAuth setup
+// ✅ Google OAuth Setup
 passport.use(
-  new GoogleStrategy.Strategy(
+  new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${process.env.BACKEND_URL}/auth/google/callback`,
+      callbackURL: process.env.GOOGLE_REDIRECT_URI, // directly use redirect URI
     },
     (accessToken, refreshToken, profile, done) => {
-      // You can save user info to DB here if needed
       return done(null, profile);
     }
   )
@@ -51,9 +47,9 @@ passport.use(
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
-// Routes
+// ✅ Routes
 app.get("/", (req, res) => {
-  res.send("✅ Backend running successfully!");
+  res.send("✅ Backend running successfully");
 });
 
 app.get(
@@ -83,8 +79,6 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// Start server
+// ✅ Start server
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
