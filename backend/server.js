@@ -55,12 +55,41 @@ app.get(
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
+  (req, res) => {
+    // If displayName is already set, skip asking
+    if (!req.session.displayName) {
+      res.redirect(`${process.env.FRONTEND_URL}?ask_name=true`);
+    } else {
+      res.redirect(`${process.env.FRONTEND_URL}`);
+    }
+  }
 );
 
+// 🔹 Logout Route
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => {
+    req.logout(() => {
+      res.redirect(`${process.env.FRONTEND_URL}`);
+    });
+  });
+});
+
+// 🔹 Set displayName route
+app.post("/api/set-name", (req, res) => {
+  const { name } = req.body;
+  if (!req.user || !name) return res.status(400).json({ message: "Invalid" });
+  req.session.displayName = name;
+  res.json({ ok: true });
+});
+
+// 🔹 Fetch user route
 app.get("/api/user", (req, res) => {
-  if (req.user) res.json(req.user);
-  else res.status(401).json({ message: "Not logged in" });
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  const profile = {
+    ...req.user,
+    displayName: req.session.displayName || null,
+  };
+  res.json(profile);
 });
 
 // 🔹 Resume Analysis Route
