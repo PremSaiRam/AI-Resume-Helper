@@ -24,7 +24,6 @@ app.use(
     secret: "resume-helper-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 },
   })
 );
 
@@ -32,6 +31,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
+// ✅ Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -42,43 +42,65 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_REDIRECT_URI,
     },
-    (accessToken, refreshToken, profile, done) => done(null, profile)
+    (accessToken, refreshToken, profile, done) => {
+      // Use profile.id as unique user identifier
+      if (!profile.displayName) {
+        // if somehow missing, fallback
+        profile.displayName = profile.name?.givenName || "User";
+      }
+      done(null, profile);
+    }
   )
 );
 
-// ------------------ AUTH ROUTES ------------------
+// ✅ Root route
+app.get("/", (req, res) => {
+  res.send("✅ Backend running");
+});
+
+// 🔹 Auth Routes
 app.get(
   "/auth/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    prompt: "select_account",
-  })
+  passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })
 );
 
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
+    // Store displayName in session if first login
+    if (!req.session.displayName) {
+      req.session.displayName = req.user.displayName;
+    }
     res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
   }
 );
 
-app.get("/api/user", (req, res) => {
-  if (req.user) res.json(req.user);
-  else res.status(401).json({ message: "Not logged in" });
-});
-
-app.post("/api/logout", (req, res) => {
-  req.logout((err) => {
-    if (err) console.error(err);
+// ✅ Logout
+app.get("/logout", (req, res) => {
+  req.logout(() => {
     req.session.destroy(() => {
-      res.clearCookie("connect.sid");
-      res.json({ success: true });
+      res.redirect(process.env.FRONTEND_URL);
     });
   });
 });
 
-// ------------------ RESUME ANALYSIS ------------------
+// 🔹 Get current user
+app.get("/api/user", (req, res) => {
+  if (req.user) {
+    const userData = {
+      id: req.user.id,
+      displayName: req.session.displayName || req.user.displayName,
+      emails: req.user.emails,
+      photos: req.user.photos,
+    };
+    res.json(userData);
+  } else {
+    res.status(401).json({ message: "Not logged in" });
+  }
+});
+
+// 🔹 Resume Analysis Route
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -87,8 +109,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const mimetype = req.file.mimetype;
     let resumeText = "";
 
-    if (
-      mimetype ===
+    if (mimetype ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ) {
       const result = await mammoth.extractRawText({ path: filePath });
@@ -97,15 +118,13 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
       resumeText = fs.readFileSync(filePath, "utf-8");
     } else {
       fs.unlinkSync(filePath);
-      return res
-        .status(400)
-        .json({ error: "Only DOCX or TXT resumes are supported." });
+      return res.status(400).json({ error: "Only DOCX or TXT resumes are supported." });
     }
 
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
-    // OpenAI call
+    // 🔹 OpenAI call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -145,15 +164,12 @@ ${resumeText}`,
       analysisJSON = { text: analysisText };
     }
 
-    res.json({ text: analysisJSON });
+    res.json(analysisJSON);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
-
-// ------------------ ROOT ------------------
-app.get("/", (req, res) => res.send("✅ Backend is running"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
