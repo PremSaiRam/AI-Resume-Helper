@@ -1,8 +1,10 @@
+// src/components/Dashboard.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import ResumeUploader from "./ResumeUploader.jsx";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
+// Circle progress for latest score
 function CircleProgress({ value = 0, size = 96 }) {
   const r = 40;
   const c = 2 * Math.PI * r;
@@ -36,6 +38,7 @@ function CircleProgress({ value = 0, size = 96 }) {
   );
 }
 
+// Simple sparkline
 function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" }) {
   const pad = 4;
   if (!values || values.length === 0) return <svg width={width} height={height}></svg>;
@@ -71,22 +74,23 @@ export default function Dashboard({ user }) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Load saved history
+  // Load history
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory") || "[]");
     setHistory(saved);
   }, []);
 
-  // Save history to localStorage
+  // Save history
   useEffect(() => {
     localStorage.setItem("resumeHistory", JSON.stringify(history));
   }, [history]);
 
+  // Handle new resume analysis result
   const onResult = (result) => {
     if (!result) return;
     setAnalysis(result);
 
-    if (result?.score) {
+    if (result?.score !== undefined) {
       const entry = {
         id: Date.now(),
         name: result?.metaName || `Resume ${new Date().toLocaleString()}`,
@@ -96,18 +100,20 @@ export default function Dashboard({ user }) {
         suggestions: result.suggestions || [],
         date: new Date().toLocaleString(),
       };
-      setHistory((s) => [entry, ...s]);
+      setHistory((prev) => [entry, ...prev]);
     }
   };
 
   const onSaving = (v) => setLoading(v);
 
+  // Delete history
   const clearHistory = () => {
     if (!confirm("Delete all saved resume history?")) return;
     setHistory([]);
     localStorage.removeItem("resumeHistory");
   };
 
+  // Filtered history
   const filtered = history.filter((h) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -115,10 +121,15 @@ export default function Dashboard({ user }) {
   });
 
   const sparkValues = useMemo(() => history.slice(0, 10).map((h) => h.score).reverse(), [history]);
-  const latestScore = history[0]?.score ?? null;
+  const latestScore = history[0]?.score ?? 0;
 
+  // Logout function
   const handleLogout = () => {
-    window.location.href = `${BACKEND_URL}/logout`;
+    fetch(`${BACKEND_URL}/logout`, { credentials: "include" })
+      .finally(() => {
+        localStorage.removeItem("displayName");
+        window.location.href = "/";
+      });
   };
 
   const displayName = user?.displayName || "User";
@@ -144,13 +155,19 @@ export default function Dashboard({ user }) {
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ textAlign: "right", marginRight: 8 }}>
-            <div style={{ fontWeight: "700" }}>{displayName}</div>
+            <div style={{ fontWeight: 700 }}>{displayName}</div>
             <div style={{ fontSize: 12, color: "#164e4e" }}>{user?.emails?.[0]?.value || ""}</div>
           </div>
           <img
             src={photo}
             alt="avatar"
-            style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", boxShadow: "0 6px 18px rgba(0,0,0,0.12)" }}
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              objectFit: "cover",
+              boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+            }}
           />
           <button onClick={handleLogout} style={styles.logoutBtn}>
             Logout
@@ -159,7 +176,7 @@ export default function Dashboard({ user }) {
       </header>
 
       <main style={styles.main}>
-        {/* Left Column */}
+        {/* Left */}
         <section style={styles.left}>
           <div style={styles.peacockCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -193,7 +210,7 @@ export default function Dashboard({ user }) {
           {analysis && (
             <div style={styles.analysisCard}>
               <h3 style={{ color: "#063b3b" }}>📊 Resume Analysis</h3>
-              {analysis.score ? (
+              {analysis.score !== undefined ? (
                 <>
                   <p>
                     <strong>Score:</strong> {analysis.score}/100
@@ -215,7 +232,7 @@ export default function Dashboard({ user }) {
           )}
         </section>
 
-        {/* Right Column */}
+        {/* Right */}
         <aside style={styles.right}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 800, color: "#073737", fontSize: 16 }}>Resume History</div>
@@ -236,7 +253,12 @@ export default function Dashboard({ user }) {
               <div style={{ color: "#667" }}>No past analyses yet.</div>
             ) : (
               filtered.map((it) => (
-                <div key={it.id} onClick={() => setAnalysis(it)} style={styles.cardRow}>
+                <div
+                  key={it.id}
+                  onClick={() => setAnalysis(it)}
+                  style={styles.cardRow}
+                  className="card-anim"
+                >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{it.name}</div>
                     <div style={{ fontSize: 12, color: "#356" }}>{it.date}</div>
@@ -266,14 +288,14 @@ const styles = {
   page: { minHeight: "100vh", background: "#f4faf9", display: "flex", flexDirection: "column", fontFamily: "Inter, Roboto, Arial, sans-serif" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 36px", borderBottom: "1px solid rgba(2,6,23,0.04)", background: "#fff" },
   logoBox: { width: 44, height: 44, borderRadius: 10, display: "grid", placeItems: "center", background: "linear-gradient(45deg,#7b2cff,#2f9bff)", boxShadow: "0 6px 18px rgba(47,155,255,0.14)" },
-  logoutBtn: { marginLeft: 12, background: "linear-gradient(90deg,#ff7b7b,#ffb36b)", border: "none", padding: "8px 12px", borderRadius: 10, color: "#fff", fontWeight: 700, cursor: "pointer" },
-  main: { display: "flex", gap: 24, padding: "28px 36px", alignItems: "flex-start" },
-  left: { flex: 1 },
-  peacockCard: { borderRadius: 16, padding: 20, background: "linear-gradient(135deg,#2b2c83,#2f9bff)", color: "#fff", boxShadow: "0 20px 40px rgba(47,155,255,0.12)" },
-  analysisCard: { marginTop: 18, background: "#fff", padding: 18, borderRadius: 12, boxShadow: "0 6px 18px rgba(2,6,23,0.06)" },
-  right: { width: 360, background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 6px 18px rgba(2,6,23,0.04)" },
-  searchInput: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #e5eef0" },
-  historyList: { display: "flex", flexDirection: "column", gap: 10, maxHeight: "56vh", overflowY: "auto" },
-  cardRow: { padding: 12, borderRadius: 12, border: "1px solid #eef6f7", display: "flex", gap: 12, alignItems: "center", cursor: "pointer", transition: "transform 160ms ease, box-shadow 160ms ease" },
-  deleteButton: { background: "#fff", border: "1px solid #ff6b6b", color: "#c53030", padding: "8px 12px", borderRadius: 10, cursor: "pointer", fontWeight: 700 },
+  logoutBtn: { marginLeft: 12, background: "linear-gradient(45deg,#ff4d6d,#ff8b4d)", border: "none", borderRadius: 10, padding: "6px 12px", color: "#fff", fontWeight: 700, cursor: "pointer" },
+  main: { display: "flex", gap: 16, flex: 1, padding: 18 },
+  left: { flex: 2, display: "flex", flexDirection: "column", gap: 12 },
+  peacockCard: { padding: 18, borderRadius: 16, background: "linear-gradient(180deg,#2f9bff,#7b2cff)", color: "#fff", display: "flex", flexDirection: "column", gap: 12 },
+  analysisCard: { marginTop: 12, padding: 12, borderRadius: 12, background: "#e0f7f7", color: "#0b5560" },
+  right: { flex: 1, padding: 12, background: "#fff", borderRadius: 12, boxShadow: "0 6px 16px rgba(0,0,0,0.04)", display: "flex", flexDirection: "column" },
+  searchInput: { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #ccc", fontSize: 14 },
+  historyList: { flex: 1, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", maxHeight: "calc(100vh - 220px)" },
+  cardRow: { display: "flex", alignItems: "center", padding: "8px 12px", borderRadius: 10, cursor: "pointer", background: "#f4faf9", transition: "all 0.2s ease", gap: 8 },
+  deleteButton: { background: "#f87171", border: "none", borderRadius: 8, color: "#fff", padding: "4px 8px", cursor: "pointer" },
 };
