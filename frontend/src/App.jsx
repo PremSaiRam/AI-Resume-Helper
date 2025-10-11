@@ -1,30 +1,31 @@
-import { useEffect, useState } from "react";
-import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import Login from "./components/Login.jsx";
+import Dashboard from "./components/Dashboard.jsx";
 
-function App() {
+const App = () => {
   const [user, setUser] = useState(null);
   const [displayName, setDisplayName] = useState(null);
 
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/user`, { withCredentials: true });
+      setUser(res.data.user);
+      setDisplayName(res.data.displayName);
+    } catch {
+      setUser(null);
+      setDisplayName(null);
+    }
+  };
+
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user`, {
-      credentials: "include",
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) {
-          setUser(data.user);
-          setDisplayName(data.displayName);
-        }
-      })
-      .catch(() => setUser(null));
+    fetchUser();
   }, []);
 
-  if (!user) return <Login />;
+  if (!user) return <Login fetchUser={fetchUser} />;
+  if (!displayName) return <Login fetchUser={fetchUser} user={user} />;
 
-  if (!displayName) return <Login user={user} setDisplayName={setDisplayName} />;
-
-  return <Dashboard user={user} displayName={displayName} setUser={setUser} setDisplayName={setDisplayName} />;
-}
+  return <Dashboard user={user} displayName={displayName} setDisplayName={setDisplayName} />;
+};
 
 export default App;
