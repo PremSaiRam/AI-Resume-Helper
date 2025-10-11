@@ -42,62 +42,25 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_REDIRECT_URI,
     },
-    (accessToken, refreshToken, profile, done) => {
-      // Use profile.id as unique user identifier
-      if (!profile.displayName) {
-        // if somehow missing, fallback
-        profile.displayName = profile.name?.givenName || "User";
-      }
-      done(null, profile);
-    }
+    (accessToken, refreshToken, profile, done) => done(null, profile)
   )
 );
-
-// ✅ Root route
-app.get("/", (req, res) => {
-  res.send("✅ Backend running");
-});
 
 // 🔹 Auth Routes
 app.get(
   "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })
+  passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => {
-    // Store displayName in session if first login
-    if (!req.session.displayName) {
-      req.session.displayName = req.user.displayName;
-    }
-    res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
-  }
+  (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
 );
 
-// ✅ Logout
-app.get("/logout", (req, res) => {
-  req.logout(() => {
-    req.session.destroy(() => {
-      res.redirect(process.env.FRONTEND_URL);
-    });
-  });
-});
-
-// 🔹 Get current user
 app.get("/api/user", (req, res) => {
-  if (req.user) {
-    const userData = {
-      id: req.user.id,
-      displayName: req.session.displayName || req.user.displayName,
-      emails: req.user.emails,
-      photos: req.user.photos,
-    };
-    res.json(userData);
-  } else {
-    res.status(401).json({ message: "Not logged in" });
-  }
+  if (req.user) res.json(req.user);
+  else res.status(401).json({ message: "Not logged in" });
 });
 
 // 🔹 Resume Analysis Route
@@ -109,9 +72,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const mimetype = req.file.mimetype;
     let resumeText = "";
 
-    if (mimetype ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ) {
+    if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       const result = await mammoth.extractRawText({ path: filePath });
       resumeText = result.value;
     } else if (mimetype === "text/plain") {
@@ -128,7 +89,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -164,7 +125,7 @@ ${resumeText}`,
       analysisJSON = { text: analysisText };
     }
 
-    res.json(analysisJSON);
+    res.json({ text: analysisJSON });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to analyze resume" });
