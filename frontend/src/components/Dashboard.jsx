@@ -1,8 +1,10 @@
+// src/components/Dashboard.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import ResumeUploader from "./ResumeUploader.jsx";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
+// Circular progress for latest score
 function CircleProgress({ value = 0, size = 96 }) {
   const r = 40;
   const c = 2 * Math.PI * r;
@@ -36,6 +38,7 @@ function CircleProgress({ value = 0, size = 96 }) {
   );
 }
 
+// Sparkline chart for last 10 scores
 function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" }) {
   const pad = 4;
   if (!values || values.length === 0) return <svg width={width} height={height}></svg>;
@@ -64,23 +67,24 @@ function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" })
   );
 }
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, onLogout }) {
   const [analysis, setAnalysis] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Load history from localStorage
+  // Load saved history from localStorage
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory") || "[]");
     setHistory(saved);
   }, []);
 
-  // Save history to localStorage
+  // Save history to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("resumeHistory", JSON.stringify(history));
   }, [history]);
 
+  // Handle new analysis result from uploader
   const onResult = (result) => {
     if (!result) return;
     setAnalysis(result);
@@ -101,12 +105,14 @@ export default function Dashboard({ user }) {
 
   const onSaving = (v) => setLoading(v);
 
+  // Delete history
   const clearHistory = () => {
     if (!confirm("Delete all saved resume history?")) return;
     setHistory([]);
     localStorage.removeItem("resumeHistory");
   };
 
+  // Filter history by search query
   const filtered = history.filter((h) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -114,23 +120,15 @@ export default function Dashboard({ user }) {
   });
 
   const sparkValues = useMemo(() => history.slice(0, 10).map((h) => h.score).reverse(), [history]);
-  const latestScore = history[0]?.score ?? null;
+  const latestScore = history[0]?.score ?? 0;
 
-  const handleLogout = () => {
-    fetch(`${BACKEND_URL}/logout`, { credentials: "include" }).then(() => {
-      localStorage.removeItem("displayName");
-      window.location.href = "/";
-    });
-  };
-
-  const displayName = user?.displayName || localStorage.getItem("displayName") || "User";
-
-  const photo = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    displayName
-  )}&background=2f9bff&color=fff&size=128`;
+  // Display name & avatar
+  const displayName = user?.displayName || user?.name || "User";
+  const photo = user?.photos?.[0]?.value || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2f9bff&color=fff&size=128`;
 
   return (
     <div style={styles.page}>
+      {/* Header */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={styles.logoBox}>
@@ -144,10 +142,10 @@ export default function Dashboard({ user }) {
             <div style={{ fontSize: 12, color: "#216e6e" }}>Analyze · Improve · Track</div>
           </div>
         </div>
-
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ textAlign: "right", marginRight: 8 }}>
             <div style={{ fontWeight: 700 }}>{displayName}</div>
+            <div style={{ fontSize: 12, color: "#164e4e" }}>{user?.emails?.[0]?.value || ""}</div>
           </div>
           <img
             src={photo}
@@ -160,13 +158,14 @@ export default function Dashboard({ user }) {
               boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
             }}
           />
-          <button onClick={handleLogout} style={styles.logoutBtn}>
+          <button onClick={onLogout} style={styles.logoutBtn}>
             Logout
           </button>
         </div>
       </header>
 
       <main style={styles.main}>
+        {/* Left column */}
         <section style={styles.left}>
           <div style={styles.peacockCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -180,7 +179,7 @@ export default function Dashboard({ user }) {
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 12, color: "#bfeef4" }}>Latest score</div>
                   <div style={{ marginTop: 6 }}>
-                    <CircleProgress value={latestScore ?? 0} />
+                    <CircleProgress value={latestScore} />
                   </div>
                 </div>
                 <div style={{ width: 140 }}>
@@ -191,6 +190,7 @@ export default function Dashboard({ user }) {
                 </div>
               </div>
             </div>
+
             <ResumeUploader onResult={onResult} onSaving={onSaving} />
           </div>
 
@@ -221,11 +221,13 @@ export default function Dashboard({ user }) {
           )}
         </section>
 
+        {/* Right column (history) */}
         <aside style={styles.right}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 800, color: "#073737", fontSize: 16 }}>Resume History</div>
             <div style={{ fontSize: 13, color: "#2b6f6f" }}>{history.length} saved</div>
           </div>
+
           <div style={{ marginBottom: 12 }}>
             <input
               placeholder="Search by name or score..."
@@ -240,7 +242,12 @@ export default function Dashboard({ user }) {
               <div style={{ color: "#667" }}>No past analyses yet.</div>
             ) : (
               filtered.map((it) => (
-                <div key={it.id} onClick={() => setAnalysis(it)} style={styles.cardRow}>
+                <div
+                  key={it.id}
+                  onClick={() => setAnalysis(it)}
+                  style={styles.cardRow}
+                  className="card-anim"
+                >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{it.name}</div>
                     <div style={{ fontSize: 12, color: "#356" }}>{it.date}</div>
@@ -266,19 +273,19 @@ export default function Dashboard({ user }) {
   );
 }
 
+// ----- Styles -----
 const styles = {
   page: { minHeight: "100vh", background: "#f4faf9", display: "flex", flexDirection: "column", fontFamily: "Inter, Roboto, Arial, sans-serif" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 36px", borderBottom: "1px solid rgba(2,6,23,0.04)", background: "#fff" },
   logoBox: { width: 44, height: 44, borderRadius: 10, display: "grid", placeItems: "center", background: "linear-gradient(45deg,#7b2cff,#2f9bff)", boxShadow: "0 6px 18px rgba(47,155,255,0.14)" },
   logoutBtn: { marginLeft: 12, background: "linear-gradient(90deg,#ff7b7b,#ffb36b)", border: "none", padding: "8px 12px", borderRadius: 10, color: "#fff", fontWeight: 700, cursor: "pointer" },
-  main: { display: "flex", flex: 1, gap: 18, padding: 24 },
-  left: { flex: 2 },
-  right: { flex: 1, display: "flex", flexDirection: "column", gap: 12 },
-  peacockCard: { padding: 24, borderRadius: 16, background: "#0b5560", color: "#fff", marginBottom: 24 },
-  analysisCard: { padding: 16, borderRadius: 12, background: "#dff7f6", marginTop: 18, color: "#0b5560" },
-  searchInput: { width: "100%", padding: 8, borderRadius: 8, border: "1px solid #ddd", marginBottom: 8 },
-  historyList: { display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" },
-  cardRow: { display: "flex", alignItems: "center", padding: 8, borderRadius: 8, background: "#e7f4f5", cursor: "pointer" },
-  deleteButton: { border: "none", background: "#ff4b5c", color: "#fff", borderRadius: 8, padding: "6px 12px", cursor: "pointer" },
+  main: { display: "flex", gap: 24, padding: "28px 36px", alignItems: "flex-start" },
+  left: { flex: 1 },
+  peacockCard: { borderRadius: 16, padding: 20, background: "linear-gradient(135deg,#2b2c83,#2f9bff)", color: "#fff", boxShadow: "0 20px 40px rgba(47,155,255,0.12)" },
+  analysisCard: { marginTop: 18, background: "#fff", padding: 18, borderRadius: 12, boxShadow: "0 6px 18px rgba(2,6,23,0.06)" },
+  right: { width: 360, background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 6px 18px rgba(2,6,23,0.04)" },
+  searchInput: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #e5eef0" },
+  historyList: { display: "flex", flexDirection: "column", gap: 10, maxHeight: "56vh", overflowY: "auto" },
+  cardRow: { padding: 12, borderRadius: 12, border: "1px solid #eef6f7", display: "flex", gap: 12, alignItems: "center", cursor: "pointer", transition: "transform 160ms ease, box-shadow 160ms ease" },
+  deleteButton: { background: "#fff", border: "1px solid #ff6b6b", color: "#c53030", padding: "8px 12px", borderRadius: 10, cursor: "pointer", fontWeight: 700 },
 };
-export { CircleProgress, Sparkline };
