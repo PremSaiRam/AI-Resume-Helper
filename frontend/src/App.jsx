@@ -17,11 +17,34 @@ export default function App() {
       .catch(() => setUser(null));
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await fetch(`${BACKEND_URL}/api/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      localStorage.removeItem("displayName");
+      setDisplayName("");
+      setUser(null);
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
   if (!user) return <Login />;
 
   if (!displayName) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          gap: 12,
+        }}
+      >
         <h2>Welcome, new user! Please enter a display name:</h2>
         <input
           type="text"
@@ -32,11 +55,16 @@ export default function App() {
               setDisplayName(e.target.value.trim());
             }
           }}
-          style={{ padding: 8, fontSize: 16, borderRadius: 6, border: "1px solid #ccc" }}
+          style={{
+            padding: 8,
+            fontSize: 16,
+            borderRadius: 6,
+            border: "1px solid #ccc",
+          }}
         />
       </div>
     );
   }
 
-  return <Dashboard user={{ ...user, displayName }} />;
+  return <Dashboard user={{ ...user, displayName }} onLogout={handleLogout} />;
 }
