@@ -1,85 +1,104 @@
+// src/components/ResumeUploader.jsx
 import React, { useState } from "react";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
-export default function ResumeUploader() {
+export default function ResumeUploader({ onResult, onSaving }) {
   const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [working, setWorking] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!file) return alert("Please select a file first!");
-    setLoading(true);
+    if (!file) return alert("Select resume (.docx or .txt)");
 
-    const formData = new FormData();
-    formData.append("resume", file);
+    setWorking(true);
+    onSaving?.(true);
+
+    const form = new FormData();
+    form.append("resume", file);
 
     try {
       const res = await fetch(`${BACKEND_URL}/analyze`, {
         method: "POST",
-        body: formData,
+        body: form,
       });
-      const data = await res.json();
-      setResult(data.text);
+      const json = await res.json();
+      onResult?.(json.text);
     } catch (err) {
       console.error(err);
-      alert("Error analyzing resume");
+      onResult?.({ text: "Error analyzing resume" });
     } finally {
-      setLoading(false);
+      setWorking(false);
+      onSaving?.(false);
     }
   };
 
   return (
-    <div style={{ marginTop: "30px" }}>
-      <form onSubmit={handleSubmit}>
+    <form onSubmit={submit} style={uStyles.form}>
+      <label style={uStyles.label}>
         <input
           type="file"
           accept=".docx,.txt"
-          onChange={(e) => setFile(e.target.files[0])}
+          onChange={(e) => setFile(e.target.files?.[0])}
+          style={{ display: "none" }}
         />
-        <br />
-        <button
-          type="submit"
-          style={{
-            background: "#28a745",
-            color: "#fff",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            marginTop: "15px",
-          }}
-        >
-          {loading ? "Analyzing..." : "Analyze Resume"}
-        </button>
-      </form>
-
-      {result && (
-        <div
-          style={{
-            marginTop: "30px",
-            background: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-            padding: "20px",
-            maxWidth: "600px",
-            margin: "30px auto",
-            textAlign: "left",
-          }}
-        >
-          <h3>📊 Resume Analysis</h3>
-          {result.score && <p><strong>Score:</strong> {result.score}/100</p>}
-          {result.strengths && (
-            <p><strong>Strengths:</strong> {result.strengths.join(", ")}</p>
-          )}
-          {result.weaknesses && (
-            <p><strong>Weaknesses:</strong> {result.weaknesses.join(", ")}</p>
-          )}
-          {result.suggestions && (
-            <p><strong>Suggestions:</strong> {result.suggestions.join(", ")}</p>
-          )}
+        <div style={uStyles.fileBox}>
+          <div>
+            <strong style={{ fontSize: 14, color: "#063b3b" }}>
+              {file ? file.name : "Choose a .docx or .txt resume"}
+            </strong>
+            <div style={{ fontSize: 12, color: "#336666" }}>
+              {file ? `${(file.size / 1024).toFixed(1)} KB` : "No file selected"}
+            </div>
+          </div>
+          <div style={uStyles.chooseBtn}>Browse</div>
         </div>
-      )}
-    </div>
+      </label>
+
+      <button type="submit" style={{ ...uStyles.submit, opacity: working ? 0.7 : 1 }}>
+        {working ? "Analyzing..." : "Analyze Resume"}
+      </button>
+    </form>
   );
 }
+
+const uStyles = {
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    alignItems: "flex-start",
+    marginTop: 18,
+  },
+  label: {
+    width: "100%",
+    cursor: "pointer",
+  },
+  fileBox: {
+    width: "100%",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px 16px",
+    background: "#e6fffb",
+    borderRadius: 10,
+    border: "1px solid rgba(2,6,23,0.04)",
+  },
+  chooseBtn: {
+    background: "linear-gradient(90deg,#2f9bff,#7b2cff)",
+    color: "#fff",
+    padding: "8px 12px",
+    borderRadius: 8,
+    fontWeight: 700,
+  },
+  submit: {
+    marginTop: 6,
+    background: "#0f766e",
+    color: "#fff",
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 700,
+  },
+};
