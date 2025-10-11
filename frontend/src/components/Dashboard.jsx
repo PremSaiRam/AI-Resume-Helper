@@ -7,13 +7,13 @@ export default function Dashboard({ user }) {
   const [history, setHistory] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Load from browser storage
+  // Load from localStorage on page load
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory") || "[]");
     setHistory(saved);
   }, []);
 
-  // Save back to storage
+  // Save back to localStorage whenever history changes
   useEffect(() => {
     localStorage.setItem("resumeHistory", JSON.stringify(history));
   }, [history]);
@@ -29,17 +29,20 @@ export default function Dashboard({ user }) {
     formData.append("resume", file);
 
     try {
-      // Change below URL if your backend runs on a different domain
-      const res = await fetch("https://your-render-backend-url.com/analyze", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        "https://ai-resume-helper-35j6.onrender.com/analyze",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       const data = await res.json();
       const result = data.text;
 
       if (result?.score) {
         setAnalysis(result);
+
         const newEntry = {
           id: Date.now(),
           name: file.name,
@@ -49,6 +52,7 @@ export default function Dashboard({ user }) {
           suggestions: result.suggestions,
           date: new Date().toLocaleString(),
         };
+
         setHistory([newEntry, ...history]);
       } else {
         setAnalysis({ text: "No valid analysis returned." });
@@ -61,6 +65,7 @@ export default function Dashboard({ user }) {
     }
   };
 
+  // Search filter
   const filteredHistory = history.filter(
     (h) =>
       h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,8 +73,15 @@ export default function Dashboard({ user }) {
   );
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f5f6fa" }}>
-      {/* Main Content */}
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "#f5f6fa",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      {/* Left - Main content */}
       <div style={{ flex: 1, padding: "2rem" }}>
         <h1 style={{ color: "#007bff", fontWeight: "bold" }}>
           Welcome, {user.name} 🎉
@@ -89,9 +101,14 @@ export default function Dashboard({ user }) {
             type="file"
             accept=".docx,.txt"
             onChange={(e) => setFile(e.target.files[0])}
-            style={{ marginBottom: "1rem" }}
+            style={{
+              marginBottom: "1rem",
+              padding: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "6px",
+              width: "100%",
+            }}
           />
-          <br />
           <button
             type="submit"
             style={{
@@ -122,15 +139,27 @@ export default function Dashboard({ user }) {
               borderRadius: "10px",
               boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
               marginTop: "1.5rem",
+              transition: "all 0.3s ease-in-out",
             }}
           >
             <h3 style={{ color: "#007bff" }}>📊 Resume Analysis</h3>
             {analysis.score ? (
               <>
-                <p><strong>Score:</strong> {analysis.score}/100</p>
-                <p><strong>Strengths:</strong> {analysis.strengths.join(", ")}</p>
-                <p><strong>Weaknesses:</strong> {analysis.weaknesses.join(", ")}</p>
-                <p><strong>Suggestions:</strong> {analysis.suggestions.join(", ")}</p>
+                <p>
+                  <strong>Score:</strong> {analysis.score}/100
+                </p>
+                <p>
+                  <strong>Strengths:</strong>{" "}
+                  {analysis.strengths.join(", ")}
+                </p>
+                <p>
+                  <strong>Weaknesses:</strong>{" "}
+                  {analysis.weaknesses.join(", ")}
+                </p>
+                <p>
+                  <strong>Suggestions:</strong>{" "}
+                  {analysis.suggestions.join(", ")}
+                </p>
               </>
             ) : (
               <p>{analysis.text}</p>
@@ -139,7 +168,7 @@ export default function Dashboard({ user }) {
         )}
       </div>
 
-      {/* History Sidebar */}
+      {/* Right - Resume History */}
       <div
         style={{
           width: "350px",
@@ -153,6 +182,7 @@ export default function Dashboard({ user }) {
         <h2 style={{ color: "#007bff", marginBottom: "0.5rem" }}>
           📁 Resume History
         </h2>
+
         <input
           type="text"
           placeholder="Search by name or score..."
@@ -191,11 +221,18 @@ export default function Dashboard({ user }) {
                 <strong>{item.name}</strong>
                 <p style={{ fontSize: "0.9em", color: "#555" }}>
                   Score:{" "}
-                  <span style={{ color: "#007bff", fontWeight: "bold" }}>
+                  <span
+                    style={{
+                      color: "#007bff",
+                      fontWeight: "bold",
+                    }}
+                  >
                     {item.score}
                   </span>
                 </p>
-                <p style={{ fontSize: "0.75em", color: "#aaa" }}>{item.date}</p>
+                <p style={{ fontSize: "0.75em", color: "#aaa" }}>
+                  {item.date}
+                </p>
               </div>
             ))
           ) : (
