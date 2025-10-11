@@ -32,7 +32,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// Passport setup
+// ✅ Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -47,7 +47,12 @@ passport.use(
   )
 );
 
-// Auth Routes
+// 🔹 Root route to confirm server running
+app.get("/", (req, res) => {
+  res.send("Backend is running ✅");
+});
+
+// 🔹 Auth Routes
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 app.get(
@@ -58,6 +63,7 @@ app.get(
   }
 );
 
+// Get logged-in user info
 app.get("/api/user", (req, res) => {
   if (req.user) res.json(req.user);
   else res.status(401).json({ message: "Not logged in" });
@@ -73,7 +79,7 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// Resume Analysis Route
+// Resume Analysis
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -95,7 +101,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
-    // OpenAI call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
