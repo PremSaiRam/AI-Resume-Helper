@@ -1,73 +1,69 @@
-import React, { useState } from "react";
+// src/components/Login.jsx
+import React, { useState, useEffect } from "react";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
-export default function Login({ askName = false, user }) {
+export default function Login() {
   const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [askName, setAskName] = useState(false);
+
+  useEffect(() => {
+    // Check if user already entered a display name
+    const storedName = localStorage.getItem("displayName");
+    if (!storedName) setAskName(true);
+  }, []);
 
   const handleGoogleLogin = () => {
+    if (askName && !name.trim()) {
+      alert("Please enter your display name first.");
+      return;
+    }
+    if (askName) {
+      localStorage.setItem("displayName", name.trim());
+    }
     window.location.href = `${BACKEND_URL}/auth/google`;
   };
-
-  const handleSaveName = async () => {
-    if (!name.trim()) return alert("Enter a display name");
-    setSaving(true);
-    try {
-      await fetch(`${BACKEND_URL}/api/set-name`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name: name.trim() }),
-      });
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save name");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (askName) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <h2 style={styles.h2}>Welcome! Please choose a display name</h2>
-          <input
-            type="text"
-            placeholder="Your display name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={styles.input}
-          />
-          <button onClick={handleSaveName} style={styles.googleBtn}>
-            {saving ? "Saving..." : "Continue"}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.brandRow}>
           <div style={styles.logo}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="10" fill="#2f9bff" />
-              <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff" />
+              <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff"/>
             </svg>
           </div>
           <div style={styles.title}>AI Resume Helper</div>
         </div>
+
         <h2 style={styles.h2}>Smart resume feedback — instant.</h2>
         <p style={styles.lead}>
           Sign in with Google to upload resumes, view historic scores and get actionable suggestions.
         </p>
+
+        {askName && (
+          <input
+            type="text"
+            placeholder="Enter display name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={styles.nameInput}
+          />
+        )}
+
         <button onClick={handleGoogleLogin} style={styles.googleBtn}>
+          <img
+            src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18'><g fill='none' fill-rule='evenodd'><path fill='%23EA4335' d='M17.64 9.2045c0-.638-.057-1.251-.163-1.84H9v3.48h4.844c-.208 1.12-.84 2.07-1.792 2.713v2.26h2.9c1.694-1.56 2.689-3.86 2.689-6.613z'/><path fill='%2334A853' d='M9 18c2.43 0 4.468-.806 5.957-2.186l-2.9-2.26c-.806.543-1.84.866-3.057.866-2.35 0-4.344-1.586-5.054-3.72H1.987v2.332C3.46 16.96 6.01 18 9 18z'/><path fill='%234A90E2' d='M3.946 10.7A5.403 5.403 0 0 1 3.86 9c0-.65.11-1.28.306-1.88V4.79H1.987A9.005 9.005 0 0 0 0 9c0 1.46.33 2.84.987 4.057l2.96-2.357z'/><path fill='%23FBBC05' d='M9 3.58c1.31 0 2.5.45 3.43 1.33l2.58-2.58C13.468.85 11.43 0 9 0 6.01 0 3.46 1.04 1.987 2.86L4.99 5.21C5.656 3.82 7.65 3.58 9 3.58z'/></g></svg>"
+            alt="google"
+            style={{ marginRight: 10 }}
+          />
           Continue with Google
         </button>
+
+        <div style={{ marginTop: 18, color: "#6b7280" }}>
+          <small>We only store your resume analyses locally (no DB). Sessions are handled by the backend.</small>
+        </div>
       </div>
     </div>
   );
@@ -87,12 +83,42 @@ const styles = {
     background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
     borderRadius: 16,
     padding: "36px 36px",
+    boxShadow: "0 12px 40px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.03)",
     color: "#fff",
-    textAlign: "center",
+    border: "1px solid rgba(255,255,255,0.04)",
+    textAlign: "left",
   },
-  h2: { fontSize: 28, marginBottom: 12 },
-  input: { width: "100%", padding: 12, margin: "12px 0", borderRadius: 10, border: "1px solid #ccc", fontSize: 16 },
+  brandRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    justifyContent: "center",
+  },
+  logo: {
+    width: 48,
+    height: 48,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(45deg,#7b2cff,#2f9bff)",
+    borderRadius: 12,
+  },
+  title: {
+    fontWeight: 700,
+    fontSize: 18,
+    color: "#e6f0ff",
+  },
+  h2: {
+    marginTop: 18,
+    marginBottom: 8,
+    fontSize: 28,
+    lineHeight: 1.05,
+  },
+  lead: {
+    margin: 0,
+    color: "rgba(230,240,255,0.8)",
+  },
   googleBtn: {
+    marginTop: 22,
     padding: "12px 18px",
     background: "#fff",
     color: "#111827",
@@ -100,6 +126,16 @@ const styles = {
     border: "none",
     cursor: "pointer",
     fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    boxShadow: "0 6px 18px rgba(15,23,42,0.35)",
   },
-  brandRow: { display: "flex", alignItems: "center", gap: 12, justifyContent: "center" },
-  logo: { width: 48, height: 48, display: "grid", placeItems: "center", background: "linear-gradient(
+  nameInput: {
+    marginTop: 18,
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid #ccc",
+    fontSize: 16,
+  },
+};
