@@ -1,21 +1,11 @@
-import React, { useState, useEffect } from "react";
+// src/components/Login.jsx
+import React, { useState } from "react";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
-export default function Login() {
-  const [askingName, setAskingName] = useState(false);
+export default function Login({ askName = false, user }) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-
-  // check session for user without displayName
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((user) => {
-        if (!user.message && !user.displayName) setAskingName(true);
-      })
-      .catch(() => {});
-  }, []);
 
   const handleGoogleLogin = () => {
     window.location.href = `${BACKEND_URL}/auth/google`;
@@ -32,12 +22,10 @@ export default function Login() {
         body: JSON.stringify({ name: name.trim() }),
       });
 
+      // Reload user and redirect to dashboard
       const res = await fetch(`${BACKEND_URL}/api/user`, { credentials: "include" });
       const updatedUser = await res.json();
-      if (!updatedUser.message) {
-        window.history.replaceState({}, document.title, "/");
-        window.location.reload(); // goes to Dashboard now
-      }
+      if (!updatedUser.message) window.location.reload();
     } catch (err) {
       console.error(err);
       alert("Failed to save name");
@@ -46,7 +34,8 @@ export default function Login() {
     }
   };
 
-  if (askingName) {
+  // If askName is true, show display name input
+  if (askName) {
     return (
       <div style={styles.page}>
         <div style={styles.card}>
@@ -66,14 +55,21 @@ export default function Login() {
     );
   }
 
+  // Normal Google login UI
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.brandRow}>
           <div style={styles.logo}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <circle cx="12" cy="12" r="10" fill="#2f9bff" />
-              <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff"/>
+              <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff" />
             </svg>
           </div>
           <div style={styles.title}>AI Resume Helper</div>
@@ -91,7 +87,9 @@ export default function Login() {
           Continue with Google
         </button>
         <div style={{ marginTop: 18, color: "#6b7280" }}>
-          <small>We only store your resume analyses locally (no DB). Sessions are handled by the backend.</small>
+          <small>
+            We only store your resume analyses locally (no DB). Sessions are handled by the backend.
+          </small>
         </div>
       </div>
     </div>
@@ -99,13 +97,71 @@ export default function Login() {
 }
 
 const styles = {
-  page: { minHeight: "100vh", display: "grid", placeItems: "center", background: "radial-gradient(circle at 10% 20%, #0f172a 0%, rgba(12, 9, 39, 0.7) 20%, rgba(18, 15, 50, 0.6) 40%, rgba(14, 73, 93, 0.6) 100%)", padding: 20 },
-  card: { width: 760, maxWidth: "95%", background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))", borderRadius: 16, padding: "36px 36px", boxShadow: "0 12px 40px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.03)", color: "#fff", border: "1px solid rgba(255,255,255,0.04)", textAlign: "left" },
-  brandRow: { display: "flex", alignItems: "center", gap: 12 },
-  logo: { width: 48, height: 48, display: "grid", placeItems: "center", background: "linear-gradient(45deg,#2f9bff,#7b2cff)", borderRadius: 10 },
-  title: { fontWeight: 700, fontSize: 18, color: "#e6f0ff" },
-  h2: { marginTop: 18, marginBottom: 8, fontSize: 28, lineHeight: 1.05 },
-  lead: { margin: 0, color: "rgba(230,240,255,0.8)" },
-  googleBtn: { marginTop: 22, padding: "12px 18px", background: "#fff", color: "#111827", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", boxShadow: "0 6px 18px rgba(15,23,42,0.35)" },
-  input: { marginTop: 12, padding: "10px 14px", borderRadius: 10, border: "1px solid #ccc", width: "100%", fontSize: 16 }
+  page: {
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    background: "radial-gradient(circle at 10% 20%, #0f172a 0%, rgba(12, 9, 39, 0.7) 20%, rgba(18, 15, 50, 0.6) 40%, rgba(14, 73, 93, 0.6) 100%)",
+    padding: 20,
+  },
+  card: {
+    width: 760,
+    maxWidth: "95%",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
+    borderRadius: 16,
+    padding: "36px 36px",
+    boxShadow: "0 12px 40px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.03)",
+    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.04)",
+    textAlign: "left",
+  },
+  brandRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  logo: {
+    width: 48,
+    height: 48,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(45deg,#2f9bff,#7b2cff)",
+    borderRadius: 10,
+  },
+  title: {
+    fontWeight: 700,
+    fontSize: 18,
+    color: "#e6f0ff",
+  },
+  h2: {
+    marginTop: 18,
+    marginBottom: 8,
+    fontSize: 28,
+    lineHeight: 1.05,
+  },
+  lead: {
+    margin: 0,
+    color: "rgba(230,240,255,0.8)",
+  },
+  googleBtn: {
+    marginTop: 22,
+    padding: "12px 18px",
+    background: "#fff",
+    color: "#111827",
+    borderRadius: 10,
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 700,
+    display: "inline-flex",
+    alignItems: "center",
+    boxShadow: "0 6px 18px rgba(15,23,42,0.35)",
+  },
+  input: {
+    marginTop: 12,
+    padding: "10px 14px",
+    width: "100%",
+    borderRadius: 10,
+    border: "1px solid #ccc",
+    fontSize: 16,
+  },
 };
