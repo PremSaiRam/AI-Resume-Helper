@@ -11,15 +11,15 @@ services:
       - key: PORT
         value: 10000
       - key: GOOGLE_CLIENT_ID
-        sync: false       # Set manually in Render dashboard
+        sync: false
       - key: GOOGLE_CLIENT_SECRET
-        sync: false       # Set manually in Render dashboard
+        sync: false
       - key: GOOGLE_REDIRECT_URI
-        sync: false       # Set manually in Render dashboard
+        sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        sync: false       # Add your frontend Render URL (e.g., https://ai-resume-frontend.onrender.com)
+        sync: false
 
   - type: web
     name: ai-resume-frontend
@@ -31,4 +31,4 @@ services:
       - key: NODE_VERSION
         value: 22.16.0
       - key: VITE_BACKEND_URL
-        sync: false       # Add backend Render URL (e.g., https://ai-resume-backend.onrender.com)
+        sync: false
