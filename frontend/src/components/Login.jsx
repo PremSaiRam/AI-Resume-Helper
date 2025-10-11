@@ -1,6 +1,6 @@
 import React from "react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import jwtDecode from "jwt-decode";
+import { jwtDecode } from "jwt-decode"; // ✅ FIXED IMPORT
 
 export default function Login() {
   const handleSuccess = async (credentialResponse) => {
@@ -12,7 +12,7 @@ export default function Login() {
   return (
     <div
       style={{
-        backgroundColor: "#0088cc",
+        backgroundColor: "#0088cc", // 🦚 Peacock blue
         height: "100vh",
         display: "flex",
         flexDirection: "column",
@@ -22,6 +22,7 @@ export default function Login() {
       }}
     >
       <h1 style={{ marginBottom: "20px", fontSize: "2rem" }}>AI Resume Helper</h1>
+
       <div
         style={{
           backgroundColor: "white",
