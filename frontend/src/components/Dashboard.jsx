@@ -4,7 +4,6 @@ import ResumeUploader from "./ResumeUploader.jsx";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
-// Circular progress for latest score
 function CircleProgress({ value = 0, size = 96 }) {
   const r = 40;
   const c = 2 * Math.PI * r;
@@ -38,7 +37,6 @@ function CircleProgress({ value = 0, size = 96 }) {
   );
 }
 
-// Sparkline chart for last 10 scores
 function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" }) {
   const pad = 4;
   if (!values || values.length === 0) return <svg width={width} height={height}></svg>;
@@ -47,6 +45,7 @@ function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" })
   const max = Math.max(...values);
   const range = max - min || 1;
   const step = (width - pad * 2) / (values.length - 1 || 1);
+
   const points = values.map((v, i) => {
     const x = pad + i * step;
     const y = pad + (height - pad * 2) * (1 - (v - min) / range);
@@ -73,18 +72,18 @@ export default function Dashboard({ user, onLogout }) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Load saved history from localStorage
+  // Load history
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory") || "[]");
     setHistory(saved);
   }, []);
 
-  // Save history to localStorage whenever it changes
+  // Save history
   useEffect(() => {
     localStorage.setItem("resumeHistory", JSON.stringify(history));
   }, [history]);
 
-  // Handle new analysis result from uploader
+  // Handle new result from uploader
   const onResult = (result) => {
     if (!result) return;
     setAnalysis(result);
@@ -105,14 +104,12 @@ export default function Dashboard({ user, onLogout }) {
 
   const onSaving = (v) => setLoading(v);
 
-  // Delete history
   const clearHistory = () => {
     if (!confirm("Delete all saved resume history?")) return;
     setHistory([]);
     localStorage.removeItem("resumeHistory");
   };
 
-  // Filter history by search query
   const filtered = history.filter((h) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -120,15 +117,15 @@ export default function Dashboard({ user, onLogout }) {
   });
 
   const sparkValues = useMemo(() => history.slice(0, 10).map((h) => h.score).reverse(), [history]);
-  const latestScore = history[0]?.score ?? 0;
+  const latestScore = history[0]?.score ?? null;
 
-  // Display name & avatar
-  const displayName = user?.displayName || user?.name || "User";
-  const photo = user?.photos?.[0]?.value || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2f9bff&color=fff&size=128`;
+  const displayName = user?.displayName || "User";
+  const photo =
+    user?.photo ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2f9bff&color=fff&size=128`;
 
   return (
     <div style={styles.page}>
-      {/* Header */}
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={styles.logoBox}>
@@ -142,10 +139,11 @@ export default function Dashboard({ user, onLogout }) {
             <div style={{ fontSize: 12, color: "#216e6e" }}>Analyze · Improve · Track</div>
           </div>
         </div>
+
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ textAlign: "right", marginRight: 8 }}>
             <div style={{ fontWeight: 700 }}>{displayName}</div>
-            <div style={{ fontSize: 12, color: "#164e4e" }}>{user?.emails?.[0]?.value || ""}</div>
+            <div style={{ fontSize: 12, color: "#164e4e" }}>{user?.email || ""}</div>
           </div>
           <img
             src={photo}
@@ -165,7 +163,7 @@ export default function Dashboard({ user, onLogout }) {
       </header>
 
       <main style={styles.main}>
-        {/* Left column */}
+        {/* Left */}
         <section style={styles.left}>
           <div style={styles.peacockCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -179,7 +177,7 @@ export default function Dashboard({ user, onLogout }) {
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 12, color: "#bfeef4" }}>Latest score</div>
                   <div style={{ marginTop: 6 }}>
-                    <CircleProgress value={latestScore} />
+                    <CircleProgress value={latestScore ?? 0} />
                   </div>
                 </div>
                 <div style={{ width: 140 }}>
@@ -190,7 +188,6 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
               </div>
             </div>
-
             <ResumeUploader onResult={onResult} onSaving={onSaving} />
           </div>
 
@@ -221,7 +218,7 @@ export default function Dashboard({ user, onLogout }) {
           )}
         </section>
 
-        {/* Right column (history) */}
+        {/* Right */}
         <aside style={styles.right}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 800, color: "#073737", fontSize: 16 }}>Resume History</div>
@@ -273,19 +270,99 @@ export default function Dashboard({ user, onLogout }) {
   );
 }
 
-// ----- Styles -----
 const styles = {
-  page: { minHeight: "100vh", background: "#f4faf9", display: "flex", flexDirection: "column", fontFamily: "Inter, Roboto, Arial, sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 36px", borderBottom: "1px solid rgba(2,6,23,0.04)", background: "#fff" },
-  logoBox: { width: 44, height: 44, borderRadius: 10, display: "grid", placeItems: "center", background: "linear-gradient(45deg,#7b2cff,#2f9bff)", boxShadow: "0 6px 18px rgba(47,155,255,0.14)" },
-  logoutBtn: { marginLeft: 12, background: "linear-gradient(90deg,#ff7b7b,#ffb36b)", border: "none", padding: "8px 12px", borderRadius: 10, color: "#fff", fontWeight: 700, cursor: "pointer" },
-  main: { display: "flex", gap: 24, padding: "28px 36px", alignItems: "flex-start" },
+  page: {
+    minHeight: "100vh",
+    background: "#f4faf9",
+    display: "flex",
+    flexDirection: "column",
+    fontFamily: "Inter, Roboto, Arial, sans-serif",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "18px 36px",
+    borderBottom: "1px solid rgba(2,6,23,0.04)",
+    background: "#fff",
+  },
+  logoBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    display: "grid",
+    placeItems: "center",
+    background: "linear-gradient(45deg,#7b2cff,#2f9bff)",
+    boxShadow: "0 6px 18px rgba(47,155,255,0.14)",
+  },
+  logoutBtn: {
+    marginLeft: 12,
+    background: "linear-gradient(90deg,#ff7b7b,#ffb36b)",
+    border: "none",
+    padding: "8px 12px",
+    borderRadius: 10,
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  main: {
+    display: "flex",
+    gap: 24,
+    padding: "28px 36px",
+    alignItems: "flex-start",
+  },
   left: { flex: 1 },
-  peacockCard: { borderRadius: 16, padding: 20, background: "linear-gradient(135deg,#2b2c83,#2f9bff)", color: "#fff", boxShadow: "0 20px 40px rgba(47,155,255,0.12)" },
-  analysisCard: { marginTop: 18, background: "#fff", padding: 18, borderRadius: 12, boxShadow: "0 6px 18px rgba(2,6,23,0.06)" },
-  right: { width: 360, background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 6px 18px rgba(2,6,23,0.04)" },
-  searchInput: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #e5eef0" },
-  historyList: { display: "flex", flexDirection: "column", gap: 10, maxHeight: "56vh", overflowY: "auto" },
-  cardRow: { padding: 12, borderRadius: 12, border: "1px solid #eef6f7", display: "flex", gap: 12, alignItems: "center", cursor: "pointer", transition: "transform 160ms ease, box-shadow 160ms ease" },
-  deleteButton: { background: "#fff", border: "1px solid #ff6b6b", color: "#c53030", padding: "8px 12px", borderRadius: 10, cursor: "pointer", fontWeight: 700 },
+  peacockCard: {
+    borderRadius: 16,
+    padding: 20,
+    background: "linear-gradient(135deg,#2b2c83,#2f9bff)",
+    color: "#fff",
+    boxShadow: "0 20px 40px rgba(47,155,255,0.12)",
+  },
+  analysisCard: {
+    marginTop: 20,
+    borderRadius: 16,
+    background: "#fff",
+    padding: 20,
+    boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+  },
+  right: {
+    width: 300,
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  searchInput: {
+    width: "100%",
+    padding: 10,
+    borderRadius: 12,
+    border: "1px solid #e5eef0",
+    fontSize: 14,
+  },
+  historyList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    maxHeight: 440,
+    overflowY: "auto",
+  },
+  cardRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: 10,
+    borderRadius: 12,
+    background: "#e3f7f6",
+    cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  deleteButton: {
+    background: "linear-gradient(90deg,#ff7b7b,#ffb36b)",
+    border: "none",
+    borderRadius: 10,
+    padding: "6px 10px",
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
 };
