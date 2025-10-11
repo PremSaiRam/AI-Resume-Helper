@@ -1,11 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
 export default function Login() {
-  const [askingName, setAskingName] = useState(new URLSearchParams(window.location.search).get("ask_name"));
+  const [askingName, setAskingName] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // check session for user without displayName
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((user) => {
+        if (!user.message && !user.displayName) setAskingName(true);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleGoogleLogin = () => {
     window.location.href = `${BACKEND_URL}/auth/google`;
@@ -21,9 +31,13 @@ export default function Login() {
         credentials: "include",
         body: JSON.stringify({ name: name.trim() }),
       });
-      // remove query param
-      window.history.replaceState({}, document.title, "/");
-      window.location.reload();
+
+      const res = await fetch(`${BACKEND_URL}/api/user`, { credentials: "include" });
+      const updatedUser = await res.json();
+      if (!updatedUser.message) {
+        window.history.replaceState({}, document.title, "/");
+        window.location.reload(); // goes to Dashboard now
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to save name");
@@ -69,7 +83,11 @@ export default function Login() {
           Sign in with Google to upload resumes, view historic scores and get actionable suggestions.
         </p>
         <button onClick={handleGoogleLogin} style={styles.googleBtn}>
-          <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18'><g fill='none' fill-rule='evenodd'><path fill='%23EA4335' d='M17.64 9.2045c0-.638-.057-1.251-.163-1.84H9v3.48h4.844c-.208 1.12-.84 2.07-1.792 2.713v2.26h2.9c1.694-1.56 2.689-3.86 2.689-6.613z'/><path fill='%2334A853' d='M9 18c2.43 0 4.468-.806 5.957-2.186l-2.9-2.26c-.806.543-1.84.866-3.057.866-2.35 0-4.344-1.586-5.054-3.72H1.987v2.332C3.46 16.96 6.01 18 9 18z'/><path fill='%234A90E2' d='M3.946 10.7A5.403 5.403 0 0 1 3.86 9c0-.65.11-1.28.306-1.88V4.79H1.987A9.005 9.005 0 0 0 0 9c0 1.46.33 2.84.987 4.057l2.96-2.357z'/><path fill='%23FBBC05' d='M9 3.58c1.31 0 2.5.45 3.43 1.33l2.58-2.58C13.468.85 11.43 0 9 0 6.01 0 3.46 1.04 1.987 2.86L4.99 5.21C5.656 3.82 7.65 3.58 9 3.58z'/></g></svg>" alt="google" style={{ marginRight: 10 }} />
+          <img
+            src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18'><g fill='none' fill-rule='evenodd'><path fill='%23EA4335' d='M17.64 9.2045c0-.638-.057-1.251-.163-1.84H9v3.48h4.844c-.208 1.12-.84 2.07-1.792 2.713v2.26h2.9c1.694-1.56 2.689-3.86 2.689-6.613z'/><path fill='%2334A853' d='M9 18c2.43 0 4.468-.806 5.957-2.186l-2.9-2.26c-.806.543-1.84.866-3.057.866-2.35 0-4.344-1.586-5.054-3.72H1.987v2.332C3.46 16.96 6.01 18 9 18z'/><path fill='%234A90E2' d='M3.946 10.7A5.403 5.403 0 0 1 3.86 9c0-.65.11-1.28.306-1.88V4.79H1.987A9.005 9.005 0 0 0 0 9c0 1.46.33 2.84.987 4.057l2.96-2.357z'/><path fill='%23FBBC05' d='M9 3.58c1.31 0 2.5.45 3.43 1.33l2.58-2.58C13.468.85 11.43 0 9 0 6.01 0 3.46 1.04 1.987 2.86L4.99 5.21C5.656 3.82 7.65 3.58 9 3.58z'/></g></svg>"
+            alt="google"
+            style={{ marginRight: 10 }}
+          />
           Continue with Google
         </button>
         <div style={{ marginTop: 18, color: "#6b7280" }}>
