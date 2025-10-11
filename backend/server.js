@@ -31,7 +31,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// ✅ Passport setup
+// In-memory user storage (email -> {displayName, history})
+let users = {};
+
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -46,7 +48,7 @@ passport.use(
   )
 );
 
-// 🔹 Auth Routes
+// Auth Routes
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -55,41 +57,69 @@ app.get(
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
+  (req, res) => {
+    res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
+  }
 );
 
 app.get("/api/user", (req, res) => {
-  if (req.user) res.json(req.user);
-  else res.status(401).json({ message: "Not logged in" });
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  const email = req.user.emails[0]?.value;
+
+  if (!users[email]) users[email] = { displayName: null, history: [] };
+  res.json({ user: req.user, displayName: users[email].displayName });
 });
 
-// 🔹 Resume Analysis Route
+app.post("/api/user/displayName", (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  const email = req.user.emails[0]?.value;
+  const { displayName } = req.body;
+  users[email].displayName = displayName;
+  res.json({ success: true });
+});
+
+app.post("/api/logout", (req, res) => {
+  req.logout(() => {
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.json({ success: true });
+    });
+  });
+});
+
+// Resume Analysis
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+
   try {
     const filePath = req.file.path;
     const mimetype = req.file.mimetype;
     let resumeText = "";
 
-    if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    if (
+      mimetype ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
       const result = await mammoth.extractRawText({ path: filePath });
       resumeText = result.value;
     } else if (mimetype === "text/plain") {
       resumeText = fs.readFileSync(filePath, "utf-8");
     } else {
       fs.unlinkSync(filePath);
-      return res.status(400).json({ error: "Only DOCX or TXT resumes are supported." });
+      return res
+        .status(400)
+        .json({ error: "Only DOCX or TXT resumes are supported." });
     }
 
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
-    // 🔹 OpenAI call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -125,6 +155,10 @@ ${resumeText}`,
       analysisJSON = { text: analysisText };
     }
 
+    // Store per user history
+    const email = req.user.emails[0]?.value;
+    users[email].history.unshift({ ...analysisJSON, date: new Date().toISOString() });
+
     res.json({ text: analysisJSON });
   } catch (err) {
     console.error(err);
@@ -132,5 +166,16 @@ ${resumeText}`,
   }
 });
 
+app.get("/api/history", (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  const email = req.user.emails[0]?.value;
+  res.json(users[email]?.history || []);
+});
+
+// Default root route
+app.get("/", (req, res) => {
+  res.send("Backend is running ✅");
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
