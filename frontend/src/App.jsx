@@ -8,12 +8,18 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/user`, { credentials: "include" });
+        const data = await res.json();
         if (!data.message) setUser(data);
-      })
-      .catch(() => {});
+      } catch (e) {
+        console.log("user fetch failed", e);
+      }
+    };
+
+    // fetch user once
+    fetchUser();
   }, []);
 
   return user ? <Dashboard user={user} /> : <Login />;
