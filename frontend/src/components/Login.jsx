@@ -1,95 +1,31 @@
-// src/components/Login.jsx
-import React, { useState, useEffect } from "react";
+import React from "react";
 
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
-export default function Login({ onLogin }) {
-  const [loading, setLoading] = useState(false);
-  const [displayName, setDisplayName] = useState("");
-  const [askName, setAskName] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-
-  useEffect(() => {
-    // Check if user is already saved in localStorage for this email
-    const savedUser = JSON.parse(localStorage.getItem("user") || "null");
-    if (savedUser) {
-      onLogin(savedUser);
-    }
-  }, []);
-
+export default function Login() {
   const handleGoogleLogin = () => {
-    setLoading(true);
     window.location.href = `${BACKEND_URL}/auth/google`;
   };
-
-  const handleSubmitName = () => {
-    if (!displayName.trim()) return;
-    const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-    const newUser = { ...savedUser, displayName };
-    localStorage.setItem("user", JSON.stringify(newUser));
-    onLogin(newUser);
-  };
-
-  // Check if returning from Google OAuth
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("logged_in") === "true") {
-      const fetchUser = async () => {
-        try {
-          const res = await fetch(`${BACKEND_URL}/api/user`, {
-            credentials: "include",
-          });
-          if (!res.ok) {
-            setLoading(false);
-            return;
-          }
-          const user = await res.json();
-
-          // If displayName already exists, log in directly
-          const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-          if (savedUser.email === user.emails?.[0]?.value && savedUser.displayName) {
-            onLogin(savedUser);
-          } else {
-            // Ask for display name
-            setAskName(true);
-            setUserEmail(user.emails?.[0]?.value);
-            localStorage.setItem("user", JSON.stringify({ email: user.emails?.[0]?.value }));
-          }
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoading(false);
-          // Remove query param for cleanliness
-          window.history.replaceState({}, document.title, "/");
-        }
-      };
-      fetchUser();
-    }
-  }, []);
 
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1 style={{ marginBottom: 20, color: "#073737" }}>Welcome to AI Resume Helper</h1>
-
-        {askName ? (
-          <>
-            <p style={{ marginBottom: 10, color: "#356" }}>Enter your display name for {userEmail}:</p>
-            <input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your display name"
-              style={styles.input}
-            />
-            <button onClick={handleSubmitName} style={styles.button}>
-              Continue
-            </button>
-          </>
-        ) : (
-          <button onClick={handleGoogleLogin} style={styles.button}>
-            {loading ? "Redirecting..." : "Continue with Google"}
-          </button>
-        )}
+        <div style={styles.brandRow}>
+          <div style={styles.logo}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" fill="#2f9bff" />
+              <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff" />
+            </svg>
+          </div>
+          <div style={styles.title}>AI Resume Helper</div>
+        </div>
+        <h2 style={styles.h2}>Smart resume feedback — instant.</h2>
+        <p style={styles.lead}>
+          Sign in with Google to upload resumes, view historic scores and get actionable suggestions.
+        </p>
+        <button onClick={handleGoogleLogin} style={styles.googleBtn}>
+          Continue with Google
+        </button>
       </div>
     </div>
   );
@@ -98,37 +34,26 @@ export default function Login({ onLogin }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "#f4faf9",
-    fontFamily: "Inter, Roboto, Arial, sans-serif",
+    display: "grid",
+    placeItems: "center",
+    background: "radial-gradient(circle at 10% 20%, #0f172a 0%, rgba(12, 9, 39, 0.7) 20%, rgba(18, 15, 50, 0.6) 40%, rgba(14, 73, 93, 0.6) 100%)",
+    padding: 20,
   },
   card: {
-    background: "#fff",
-    padding: "40px 36px",
+    width: 760,
+    maxWidth: "95%",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
     borderRadius: 16,
-    boxShadow: "0 12px 32px rgba(0,0,0,0.08)",
-    textAlign: "center",
-    width: 380,
-  },
-  input: {
-    width: "100%",
-    padding: "12px 14px",
-    marginBottom: 16,
-    borderRadius: 12,
-    border: "1px solid #e5eef0",
-    fontSize: 16,
-  },
-  button: {
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "none",
-    background: "linear-gradient(90deg,#2f9bff,#7b2cff)",
+    padding: "36px 36px",
+    boxShadow: "0 12px 40px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.03)",
     color: "#fff",
-    fontWeight: 700,
-    cursor: "pointer",
-    fontSize: 16,
+    border: "1px solid rgba(255,255,255,0.04)",
+    textAlign: "center",
   },
+  brandRow: { display: "flex", alignItems: "center", gap: 12, justifyContent: "center" },
+  logo: { width: 48, height: 48, display: "grid", placeItems: "center", background: "linear-gradient(45deg,#2f9bff,#7b2cff)", borderRadius: 10 },
+  title: { fontWeight: 700, fontSize: 18, color: "#e6f0ff" },
+  h2: { marginTop: 18, marginBottom: 8, fontSize: 28, lineHeight: 1.05 },
+  lead: { margin: 0, color: "rgba(230,240,255,0.8)" },
+  googleBtn: { marginTop: 22, padding: "12px 18px", background: "#fff", color: "#111827", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700 },
 };
