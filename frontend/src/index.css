@@ -1,20 +1,12 @@
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f4f6f8;
+:root {
+  --bg: #f4faf9;
+  --card: #fff;
+  --accent: #2f9bff;
+  --accent-2: #7b2cff;
 }
-
-button {
-  cursor: pointer;
-  padding: 0.5rem 1rem;
-  border: none;
-  background: #4caf50;
-  color: white;
-  border-radius: 5px;
-}
-
-input {
-  padding: 0.5rem;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, Roboto, Arial, sans-serif; background: var(--bg); color: #0b5560; }
+button { font-family: inherit; }
+.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.header { display:flex; justify-content:space-between; align-items:center; padding: 16px 0; }
+.card { background: var(--card); padding: 18px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
