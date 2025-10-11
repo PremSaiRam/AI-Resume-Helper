@@ -1,19 +1,16 @@
 import React from "react";
 
-const HistoryPanel = ({ history }) => {
-  if (!history.length) return <div>No resume history yet.</div>;
+export default function HistoryPanel({ history }) {
+  if (!history || history.length === 0) return <div>No history yet.</div>;
 
   return (
-    <div>
-      <h3>Resume History</h3>
-      {history.map((item, idx) => (
-        <div key={idx} style={{ marginBottom: "15px", padding: "10px", background: "#fff", borderRadius: "5px" }}>
-          <strong>Date:</strong> {new Date(item.date).toLocaleString()}
-          <pre>{JSON.stringify(item, null, 2)}</pre>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {history.map((h, idx) => (
+        <div key={idx} style={{ padding: 8, background: "#f7f9fb", borderRadius: 8 }}>
+          <div style={{ fontSize: 12, color: "#666" }}>{new Date(h.date).toLocaleString()}</div>
+          <pre style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{JSON.stringify(h, null, 2)}</pre>
         </div>
       ))}
     </div>
   );
-};
-
-export default HistoryPanel;
+}
