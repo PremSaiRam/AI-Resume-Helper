@@ -1,24 +1,11 @@
-import React, { useState } from "react";
-import ResumeUploader from "./ResumeUploader";
-import HistoryPanel from "./HistoryPanel";
+import React from "react";
+import ResumeUploader from "./ResumeUploader.jsx";
 
-export default function Dashboard() {
-  const [analysis, setAnalysis] = useState(null);
-
+export default function Dashboard({ user }) {
   return (
-    <div style={{ display: "flex", gap: "20px" }}>
-      <div style={{ flex: 3 }}>
-        <h1>Upload Resume</h1>
-        <ResumeUploader onAnalysis={setAnalysis} />
-        {analysis && (
-          <pre style={{ whiteSpace: "pre-wrap", marginTop: "20px" }}>
-            {JSON.stringify(analysis, null, 2)}
-          </pre>
-        )}
-      </div>
-      <div style={{ flex: 1 }}>
-        <HistoryPanel />
-      </div>
+    <div>
+      <h2>Welcome to AI Resume Helper 🚀</h2>
+      <ResumeUploader />
     </div>
   );
 }
