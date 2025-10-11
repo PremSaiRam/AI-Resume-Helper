@@ -7,7 +7,7 @@ export default function Login() {
     try {
       const data = jwt_decode(credentialResponse.credential);
 
-      // Ask for display name only once
+      // Ask for display name once
       let displayName = localStorage.getItem("displayName");
       if (!displayName) {
         displayName = prompt("Enter your display name:");
@@ -29,7 +29,7 @@ export default function Login() {
   return (
     <div
       style={{
-        backgroundColor: "#0088cc", // peacock color
+        backgroundColor: "#0088cc", // peacock blue
         height: "100vh",
         display: "flex",
         flexDirection: "column",
@@ -55,7 +55,6 @@ export default function Login() {
             theme="outline"
             text="continue_with"
             shape="pill"
-            // ✅ Forces chooser every time
             context="signin"
             ux_mode="popup"
             auto_select={false}
