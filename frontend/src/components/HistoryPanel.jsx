@@ -1,16 +1,28 @@
-import React from "react";
+import { useEffect, useState } from "react";
 
-export default function HistoryPanel({ history }) {
-  if (!history || history.length === 0) return <div>No history yet.</div>;
+export default function HistoryPanel({ user }) {
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem(`history_${user.uid}`)) || [];
+    setHistory(saved);
+  }, [user]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {history.map((h, idx) => (
-        <div key={idx} style={{ padding: 8, background: "#f7f9fb", borderRadius: 8 }}>
-          <div style={{ fontSize: 12, color: "#666" }}>{new Date(h.date).toLocaleString()}</div>
-          <pre style={{ whiteSpace: "pre-wrap", marginTop: 6 }}>{JSON.stringify(h, null, 2)}</pre>
-        </div>
-      ))}
+    <div className="history-panel">
+      <h3>Previous Analyses</h3>
+      {history.length === 0 ? (
+        <p>No previous results.</p>
+      ) : (
+        <ul>
+          {history.map((item, i) => (
+            <li key={i}>
+              <strong>Score:</strong> {item.score} / 100<br />
+              <small>{item.date}</small>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
