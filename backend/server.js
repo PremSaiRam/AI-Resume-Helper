@@ -24,6 +24,7 @@ app.use(
     secret: "resume-helper-secret",
     resave: false,
     saveUninitialized: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 1 day
   })
 );
 
@@ -47,50 +48,32 @@ passport.use(
 );
 
 // Auth Routes
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    if (!req.session.displayName) {
-      res.redirect(`${process.env.FRONTEND_URL}?ask_name=true`);
-    } else {
-      res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
-    }
+    res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
   }
 );
 
-// Save display name
-app.post("/api/displayName", (req, res) => {
-  const { displayName } = req.body;
-  if (!displayName || !req.user) return res.status(400).json({ error: "Invalid" });
-  req.session.displayName = displayName.trim();
-  res.json({ success: true });
-});
-
-// Get current user
 app.get("/api/user", (req, res) => {
-  if (!req.user) return res.status(401).json({ message: "Not logged in" });
-  res.json({
-    ...req.user,
-    displayName: req.session.displayName || null,
-  });
+  if (req.user) res.json(req.user);
+  else res.status(401).json({ message: "Not logged in" });
 });
 
 // Logout
 app.get("/logout", (req, res) => {
   req.logout(() => {
     req.session.destroy(() => {
-      res.redirect(process.env.FRONTEND_URL);
+      res.clearCookie("connect.sid");
+      res.json({ message: "Logged out" });
     });
   });
 });
 
-// Resume Analysis
+// Resume Analysis Route
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -112,6 +95,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
+    // OpenAI call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
