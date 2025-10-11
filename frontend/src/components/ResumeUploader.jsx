@@ -1,45 +1,20 @@
 import React, { useState } from "react";
 
-const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-export default function ResumeUploader({ onAnalysis }) {
+export default function ResumeUploader() {
   const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleUpload = async (e) => {
+  const handleUpload = (e) => {
     e.preventDefault();
-    if (!file) return alert("Select a resume first");
-
-    setLoading(true);
-    const formData = new FormData();
-    formData.append("resume", file);
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/analyze`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      onAnalysis(data.text);
-    } catch (err) {
-      console.error(err);
-      alert("Analysis failed");
-    }
-
-    setLoading(false);
+    if (!file) return alert("Select a file first");
+    alert(`File uploaded: ${file.name}`);
   };
 
   return (
     <form onSubmit={handleUpload}>
-      <input
-        type="file"
-        accept=".docx,.txt"
-        onChange={(e) => setFile(e.target.files[0])}
-      />
-      <button type="submit" disabled={loading}>
-        {loading ? "Analyzing..." : "Upload & Analyze"}
-      </button>
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button type="submit">Upload Resume</button>
     </form>
   );
 }
