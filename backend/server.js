@@ -12,6 +12,7 @@ import mammoth from "mammoth";
 dotenv.config();
 const app = express();
 
+// CORS
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
@@ -19,11 +20,16 @@ app.use(
   })
 );
 
+// Session setup
 app.use(
   session({
     secret: "resume-helper-secret",
     resave: false,
     saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
   })
 );
 
@@ -31,7 +37,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// ✅ Passport setup
+// Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -58,9 +64,34 @@ app.get(
   (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
 );
 
+// 🔹 API: get logged-in user
 app.get("/api/user", (req, res) => {
-  if (req.user) res.json(req.user);
-  else res.status(401).json({ message: "Not logged in" });
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+
+  // normalize profile for frontend
+  const profile = {
+    displayName: req.user.displayName || req.user.name || req.user.emails?.[0]?.value?.split("@")[0] || "User",
+    emails: req.user.emails || [],
+    photos:
+      req.user.photos?.length > 0
+        ? req.user.photos
+        : [
+            {
+              value: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                req.user.displayName || req.user.name || req.user.emails?.[0]?.value?.split("@")[0] || "User"
+              )}&background=2f9bff&color=fff&size=128`,
+            },
+          ],
+  };
+
+  res.json(profile);
+});
+
+// 🔹 Logout route
+app.get("/logout", (req, res) => {
+  req.logout(() => {
+    res.redirect(process.env.FRONTEND_URL);
+  });
 });
 
 // 🔹 Resume Analysis Route
@@ -89,7 +120,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -125,7 +156,7 @@ ${resumeText}`,
       analysisJSON = { text: analysisText };
     }
 
-    res.json({ text: analysisJSON });
+    res.json(analysisJSON);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to analyze resume" });
