@@ -1,4 +1,3 @@
-// backend/server.js
 import express from "express";
 import session from "express-session";
 import cors from "cors";
@@ -11,29 +10,20 @@ import fetch from "node-fetch";
 import mammoth from "mammoth";
 
 dotenv.config();
-
 const app = express();
-const FRONTEND_URL = process.env.FRONTEND_URL; // set in environment
-const PORT = process.env.PORT || 5000;
-const SESSION_SECRET = process.env.SESSION_SECRET || "replace-me";
-
-if (!FRONTEND_URL) {
-  console.warn("FRONTEND_URL is not set in environment. Set it to your frontend URL.");
-}
 
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
 
 app.use(
   session({
-    secret: SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 },
   })
 );
 
@@ -41,10 +31,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// In-memory users store (email => { displayName, history: [] })
-// NOTE: in production persist this to a DB. This is for demo/dev.
-const users = {};
+const usersDB = {}; // simple in-memory DB: { googleId: { name, email, history: [] } }
 
+// Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -55,78 +44,57 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_REDIRECT_URI,
     },
-    (accessToken, refreshToken, profile, done) => done(null, profile)
+    (accessToken, refreshToken, profile, done) => {
+      done(null, profile);
+    }
   )
 );
 
-// --- Auth endpoints ---
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })
-);
+// Auth routes
+app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    // ensure the user has an entry in users store
-    const email = req.user?.emails?.[0]?.value;
-    if (email && !users[email]) users[email] = { displayName: null, history: [] };
-    // redirect to frontend with query telling it login happened
-    res.redirect(`${FRONTEND_URL}?logged_in=true`);
+    // check if user exists in DB
+    const googleId = req.user.id;
+    if (!usersDB[googleId]) {
+      // new user, redirect to display name page
+      res.redirect(`${process.env.FRONTEND_URL}/set-name?googleId=${googleId}`);
+    } else {
+      res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
+    }
   }
 );
 
-// Check current user and whether they have a displayName set
+// Save display name
+app.post("/api/set-name", (req, res) => {
+  const { googleId, displayName, email } = req.body;
+  if (!googleId || !displayName) return res.status(400).json({ error: "Missing data" });
+
+  usersDB[googleId] = { name: displayName, email, history: [] };
+  req.session.user = usersDB[googleId];
+  res.json({ success: true });
+});
+
+// Get current user
 app.get("/api/user", (req, res) => {
-  if (!req.user) return res.status(401).json({ message: "Not logged in" });
-  const email = req.user.emails?.[0]?.value;
-  if (!email) return res.status(500).json({ message: "No email in Google profile" });
-  if (!users[email]) users[email] = { displayName: null, history: [] };
-  return res.json({
-    user: {
-      id: req.user.id,
-      emails: req.user.emails,
-      photos: req.user.photos,
-      name: req.user.name,
-    },
-    displayName: users[email].displayName,
-  });
+  const user = req.session.user;
+  if (!user) return res.status(401).json({ message: "Not logged in" });
+  res.json(user);
 });
 
-// Set display name for current logged in user
-app.post("/api/user/displayName", (req, res) => {
-  if (!req.user) return res.status(401).json({ message: "Not logged in" });
-  const { displayName } = req.body;
-  if (!displayName || typeof displayName !== "string") {
-    return res.status(400).json({ message: "Invalid displayName" });
-  }
-  const email = req.user.emails?.[0]?.value;
-  if (!email) return res.status(500).json({ message: "No email in profile" });
-  if (!users[email]) users[email] = { displayName: null, history: [] };
-  users[email].displayName = displayName.trim();
-  return res.json({ success: true, displayName: users[email].displayName });
-});
-
-// Logout (POST)
+// Logout
 app.post("/api/logout", (req, res) => {
-  req.logout((err) => {
-    if (err) console.error("Logout error:", err);
-    req.session.destroy(() => {
-      res.clearCookie("connect.sid");
-      res.json({ success: true });
-    });
-  });
+  req.session.destroy();
+  res.json({ success: true });
 });
 
-// --- Resume analysis ---
-// Accept .docx and .txt
+// Resume Analysis
 const upload = multer({ dest: "uploads/" });
 
-app.post("/analyze", upload.single("resume"), async (req, res) => {
-  if (!req.user) return res.status(401).json({ message: "Not logged in" });
-  if (!req.file) return res.status(400).json({ message: "Missing file" });
-
+app.post("/api/analyze", upload.single("resume"), async (req, res) => {
   try {
     const filePath = req.file.path;
     const mimetype = req.file.mimetype;
@@ -145,8 +113,8 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
-    // Call OpenAI
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    // OpenAI API call
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -156,9 +124,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "You are a professional resume analyzer." },
-          {
-            role: "user",
-            content: `Analyze this resume and return ONLY JSON with:
+          { role: "user", content: `Analyze this resume and return ONLY JSON with:
 {
 "score": <0-100>,
 "strengths": [...],
@@ -167,48 +133,48 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 }
 
 Resume:
-${resumeText}`,
-          },
+${resumeText}` },
         ],
         temperature: 0.2,
         max_tokens: 1000,
       }),
     });
 
-    const openaiJson = await openaiRes.json();
-    const analysisText = openaiJson.choices?.[0]?.message?.content || "{}";
-    let analysisJSON;
+    const resultJSON = await response.json();
+    const analysisText = resultJSON.choices?.[0]?.message?.content || "{}";
+
+    let analysis;
     try {
-      analysisJSON = JSON.parse(analysisText);
-    } catch (err) {
-      // If not valid JSON, wrap raw text
-      analysisJSON = { raw: analysisText };
+      analysis = JSON.parse(analysisText);
+    } catch {
+      analysis = { text: analysisText };
     }
 
-    // Save to per-user in-memory history
-    const email = req.user.emails?.[0]?.value;
-    if (email) {
-      if (!users[email]) users[email] = { displayName: null, history: [] };
-      users[email].history.unshift({ ...analysisJSON, date: new Date().toISOString() });
-      // keep history size reasonable
-      if (users[email].history.length > 200) users[email].history.length = 200;
+    // Save to user's history
+    const user = req.session.user;
+    if (user) {
+      const googleId = Object.keys(usersDB).find(id => usersDB[id].email === user.email);
+      if (googleId) usersDB[googleId].history.push({ resumeText, analysis });
     }
 
-    return res.json({ text: analysisJSON });
+    res.json({ analysis });
   } catch (err) {
-    console.error("analyze error:", err);
-    return res.status(500).json({ error: "Failed to analyze resume" });
+    console.error(err);
+    res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
 
+// Get user's resume history
 app.get("/api/history", (req, res) => {
-  if (!req.user) return res.status(401).json({ message: "Not logged in" });
-  const email = req.user.emails?.[0]?.value;
-  if (!email) return res.json([]);
-  return res.json(users[email]?.history || []);
+  const user = req.session.user;
+  if (!user) return res.status(401).json({ message: "Not logged in" });
+
+  const googleId = Object.keys(usersDB).find(id => usersDB[id].email === user.email);
+  const history = googleId ? usersDB[googleId].history : [];
+  res.json(history);
 });
 
-// Root
-app.get("/", (req, res) => res.send("✅ Backend running"));
+app.get("/", (req, res) => res.send("Backend is running"));
 
-app.listen(PORT, () => console.log(`✅ Server listening on ${PORT}`));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
