@@ -1,16 +1,16 @@
 import React from "react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import jwtDecode from "jwt-decode"; // ✅ works with your current version
+import jwtDecode from "jwt-decode"; // ✅ default import for your version
 
 export default function Login() {
-  const handleSuccess = async (credentialResponse) => {
+  const handleSuccess = (credentialResponse) => {
     try {
       const data = jwtDecode(credentialResponse.credential);
 
-      // Store Google user info
+      // Save Google user info
       localStorage.setItem("user", JSON.stringify(data));
 
-      // Ask for display name only if first time login
+      // Ask for display name once
       let displayName = localStorage.getItem("displayName");
       if (!displayName) {
         displayName = prompt("Enter your display name:");
@@ -30,7 +30,7 @@ export default function Login() {
   return (
     <div
       style={{
-        backgroundColor: "#0088cc", // 🦚 Peacock blue
+        backgroundColor: "#0088cc", // 🦚 peacock blue
         height: "100vh",
         display: "flex",
         flexDirection: "column",
@@ -70,6 +70,8 @@ export default function Login() {
             onSuccess={handleSuccess}
             onError={() => alert("Login Failed")}
             useOneTap={false}
+            ux_mode="popup"
+            prompt="select_account" // ✅ always show choose-account dialog
           />
         </GoogleOAuthProvider>
       </div>
