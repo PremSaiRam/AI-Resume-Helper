@@ -8,7 +8,6 @@ function CircleProgress({ value = 0, size = 96 }) {
   const c = 2 * Math.PI * r;
   const pct = Math.max(0, Math.min(100, value));
   const dash = (pct / 100) * c;
-
   return (
     <svg width={size} height={size} viewBox="0 0 100 100">
       <defs>
@@ -39,6 +38,7 @@ function CircleProgress({ value = 0, size = 96 }) {
 function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" }) {
   const pad = 4;
   if (!values || values.length === 0) return <svg width={width} height={height}></svg>;
+
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
@@ -63,19 +63,27 @@ function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" })
   );
 }
 
-export default function Dashboard({ user, onLogout }) {
+export default function Dashboard({ user }) {
+  const userKey = `user_${user.id || user.sub}`; // unique per Google account
+
+  // per-user state
+  const [displayName, setDisplayName] = useState(
+    localStorage.getItem(`${userKey}_displayName`) || ""
+  );
   const [analysis, setAnalysis] = useState(null);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(
+    JSON.parse(localStorage.getItem(`${userKey}_history`) || "[]")
+  );
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Save per-user data
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("resumeHistory") || "[]");
-    setHistory(saved);
-  }, []);
+    if (displayName) localStorage.setItem(`${userKey}_displayName`, displayName);
+  }, [displayName]);
 
   useEffect(() => {
-    localStorage.setItem("resumeHistory", JSON.stringify(history));
+    localStorage.setItem(`${userKey}_history`, JSON.stringify(history));
   }, [history]);
 
   const onResult = (result) => {
@@ -100,7 +108,7 @@ export default function Dashboard({ user, onLogout }) {
   const clearHistory = () => {
     if (!confirm("Delete all saved resume history?")) return;
     setHistory([]);
-    localStorage.removeItem("resumeHistory");
+    localStorage.removeItem(`${userKey}_history`);
   };
 
   const filtered = history.filter((h) => {
@@ -109,16 +117,75 @@ export default function Dashboard({ user, onLogout }) {
     return h.name.toLowerCase().includes(q) || String(h.score).includes(q);
   });
 
-  const sparkValues = useMemo(() => history.slice(0, 10).map((h) => h.score).reverse(), [history]);
+  const sparkValues = useMemo(
+    () => history.slice(0, 10).map((h) => h.score).reverse(),
+    [history]
+  );
+
   const latestScore = history[0]?.score ?? null;
 
-  const displayName = user.displayName;
+  const handleLogout = () => {
+    fetch(`${BACKEND_URL}/logout`, { credentials: "include" }).finally(() => {
+      localStorage.removeItem(`${userKey}_displayName`);
+      localStorage.removeItem(`${userKey}_history`);
+      window.location.href = "/";
+    });
+  };
+
+  // If displayName not set, ask for it
+  if (!displayName) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}>
+        <div
+          style={{
+            background: "#fff",
+            padding: 32,
+            borderRadius: 16,
+            maxWidth: 400,
+            width: "95%",
+            textAlign: "center",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+          }}
+        >
+          <h2>Welcome!</h2>
+          <p>Please enter your display name:</p>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Enter display name"
+            style={{ padding: "8px 12px", borderRadius: 8, width: "100%", marginBottom: 12 }}
+          />
+          <button
+            disabled={!displayName.trim()}
+            onClick={() => setDisplayName(displayName.trim())}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "#2f9bff",
+              color: "#fff",
+              border: "none",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={styles.logoBox}></div>
+          <div style={styles.logoBox}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" fill="#2f9bff" />
+              <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff" />
+            </svg>
+          </div>
           <div>
             <div style={{ fontWeight: 800, color: "#052f2f" }}>AI Resume Helper</div>
             <div style={{ fontSize: 12, color: "#216e6e" }}>Analyze · Improve · Track</div>
@@ -129,16 +196,55 @@ export default function Dashboard({ user, onLogout }) {
             <div style={{ fontWeight: 700 }}>{displayName}</div>
             <div style={{ fontSize: 12, color: "#164e4e" }}>{user?.emails?.[0]?.value || ""}</div>
           </div>
-          <button onClick={onLogout} style={styles.logoutBtn}>
+          <img
+            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2f9bff&color=fff&size=128`}
+            alt="avatar"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              objectFit: "cover",
+              boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+            }}
+          />
+          <button onClick={handleLogout} style={styles.logoutBtn}>
             Logout
           </button>
         </div>
       </header>
+
       <main style={styles.main}>
         {/* Left content */}
         <section style={styles.left}>
-          <ResumeUploader onResult={onResult} onSaving={onSaving} />
+          <div style={styles.peacockCard}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h2 style={{ margin: 0, color: "#ffffff" }}>Upload your resume</h2>
+                <p style={{ margin: "6px 0 0 0", color: "#dff7f6" }}>
+                  Drop a DOCX or TXT file and get a score + suggestions.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 12, color: "#bfeef4" }}>Latest score</div>
+                  <div style={{ marginTop: 6 }}>
+                    <CircleProgress value={latestScore ?? 0} />
+                  </div>
+                </div>
+                <div style={{ width: 140 }}>
+                  <div style={{ fontSize: 12, color: "#bfeef4" }}>Score history</div>
+                  <div style={{ marginTop: 6 }}>
+                    <Sparkline values={sparkValues} width={140} height={48} color="#fff" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <ResumeUploader onResult={onResult} onSaving={onSaving} />
+          </div>
+
           {loading && <div style={{ marginTop: 12, color: "#07585a" }}>Analyzing... please wait ⏳</div>}
+
           {analysis && (
             <div style={styles.analysisCard}>
               <h3 style={{ color: "#063b3b" }}>📊 Resume Analysis</h3>
@@ -163,12 +269,14 @@ export default function Dashboard({ user, onLogout }) {
             </div>
           )}
         </section>
+
         {/* Right History */}
         <aside style={styles.right}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 800, color: "#073737", fontSize: 16 }}>Resume History</div>
             <div style={{ fontSize: 13, color: "#2b6f6f" }}>{history.length} saved</div>
           </div>
+
           <div style={{ marginBottom: 12 }}>
             <input
               placeholder="Search by name or score..."
@@ -177,12 +285,18 @@ export default function Dashboard({ user, onLogout }) {
               style={styles.searchInput}
             />
           </div>
+
           <div style={styles.historyList}>
             {filtered.length === 0 ? (
               <div style={{ color: "#667" }}>No past analyses yet.</div>
             ) : (
               filtered.map((it) => (
-                <div key={it.id} onClick={() => setAnalysis(it)} style={styles.cardRow}>
+                <div
+                  key={it.id}
+                  onClick={() => setAnalysis(it)}
+                  style={styles.cardRow}
+                  className="card-anim"
+                >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{it.name}</div>
                     <div style={{ fontSize: 12, color: "#356" }}>{it.date}</div>
@@ -195,6 +309,7 @@ export default function Dashboard({ user, onLogout }) {
               ))
             )}
           </div>
+
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
             <div style={{ color: "#245" }}>Saved locally</div>
             <button onClick={clearHistory} style={styles.deleteButton}>
@@ -210,10 +325,11 @@ export default function Dashboard({ user, onLogout }) {
 const styles = {
   page: { minHeight: "100vh", background: "#f4faf9", display: "flex", flexDirection: "column", fontFamily: "Inter, Roboto, Arial, sans-serif" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 36px", borderBottom: "1px solid rgba(2,6,23,0.04)", background: "#fff" },
-  logoBox: { width: 44, height: 44, borderRadius: 10, background: "linear-gradient(45deg,#7b2cff,#2f9bff)" },
+  logoBox: { width: 44, height: 44, borderRadius: 10, display: "grid", placeItems: "center", background: "linear-gradient(45deg,#7b2cff,#2f9bff)", boxShadow: "0 6px 18px rgba(47,155,255,0.14)" },
   logoutBtn: { marginLeft: 12, background: "linear-gradient(90deg,#ff7b7b,#ffb36b)", border: "none", padding: "8px 12px", borderRadius: 10, color: "#fff", fontWeight: 700, cursor: "pointer" },
   main: { display: "flex", gap: 24, padding: "28px 36px", alignItems: "flex-start" },
   left: { flex: 1 },
+  peacockCard: { borderRadius: 16, padding: 20, background: "linear-gradient(135deg,#2b2c83,#2f9bff)", color: "#fff", boxShadow: "0 20px 40px rgba(47,155,255,0.12)" },
   analysisCard: { marginTop: 18, background: "#fff", padding: 18, borderRadius: 12, boxShadow: "0 6px 18px rgba(2,6,23,0.06)" },
   right: { width: 360, background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 6px 18px rgba(2,6,23,0.04)" },
   searchInput: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #e5eef0" },
