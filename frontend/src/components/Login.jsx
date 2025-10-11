@@ -1,45 +1,51 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
-export default function Login({ onLogin, askName }) {
+export default function Login({ onLogin }) {
+  const [loading, setLoading] = useState(false);
   const [displayName, setDisplayName] = useState("");
 
-  const handleGoogleLogin = () => {
+  useEffect(() => {
+    // Check if user info already stored
+    const storedName = localStorage.getItem("displayName");
+    if (storedName) {
+      onLogin({ displayName: storedName });
+    }
+  }, []);
+
+  const handleContinue = () => {
+    if (!displayName.trim()) return alert("Enter your name!");
+    localStorage.setItem("displayName", displayName.trim());
+    onLogin({ displayName: displayName.trim() });
+  };
+
+  const handleGoogle = () => {
     window.location.href = `${BACKEND_URL}/auth/google`;
   };
 
-  const handleSubmitName = (e) => {
-    e.preventDefault();
-    if (!displayName.trim()) return alert("Please enter a display name");
-    onLogin(displayName.trim());
-  };
+  const storedName = localStorage.getItem("displayName");
 
-  if (askName) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.card}>
-          <h2>Enter your display name</h2>
-          <form onSubmit={handleSubmitName}>
+  if (storedName) return null; // Already logged in
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h2>Welcome to AI Resume Helper</h2>
+        {!storedName ? (
+          <>
             <input
+              placeholder="Enter your display name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               style={styles.input}
-              placeholder="Your display name"
             />
-            <button type="submit" style={styles.btn}>
-              Save
+            <button onClick={handleContinue} style={styles.button}>
+              Continue
             </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h2>Smart resume feedback — instant.</h2>
-        <button onClick={handleGoogleLogin} style={styles.btn}>
+            <div style={{ margin: "12px 0", textAlign: "center", color: "#555" }}>or</div>
+          </>
+        ) : null}
+        <button onClick={handleGoogle} style={{ ...styles.button, background: "#4285F4" }}>
           Continue with Google
         </button>
       </div>
@@ -48,31 +54,36 @@ export default function Login({ onLogin, askName }) {
 }
 
 const styles = {
-  page: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    background: "#0f172a",
+  container: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100vh",
+    background: "#f4faf9",
   },
   card: {
     padding: 36,
     borderRadius: 16,
-    background: "#1e293b",
-    color: "#fff",
+    background: "#fff",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+    width: 360,
     textAlign: "center",
   },
   input: {
+    width: "100%",
     padding: 12,
-    width: 240,
-    marginBottom: 12,
     borderRadius: 8,
-    border: "1px solid #fff",
+    border: "1px solid #ddd",
+    marginBottom: 12,
   },
-  btn: {
-    padding: "12px 18px",
-    borderRadius: 10,
+  button: {
+    width: "100%",
+    padding: 12,
+    borderRadius: 8,
     border: "none",
-    cursor: "pointer",
+    background: "#0b5560",
+    color: "#fff",
     fontWeight: 700,
+    cursor: "pointer",
   },
 };
