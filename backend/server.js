@@ -57,7 +57,7 @@ app.get(
   "/auth/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
-    prompt: "select_account", // ✅ forces account chooser
+    prompt: "select_account", // force account chooser
   })
 );
 
@@ -72,7 +72,7 @@ app.get("/logout", (req, res) => {
   req.logout(err => {
     if (err) return res.status(500).send("Logout failed");
     req.session.destroy(() => {
-      res.clearCookie("connect.sid"); // remove session cookie
+      res.clearCookie("connect.sid");
       res.redirect(process.env.FRONTEND_URL);
     });
   });
@@ -82,7 +82,6 @@ app.get("/logout", (req, res) => {
 app.get("/api/user", (req, res) => {
   if (!req.user) return res.status(401).json({ message: "Not logged in" });
 
-  // normalize profile for frontend
   const profile = {
     displayName:
       req.user.displayName ||
@@ -135,7 +134,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
-    // 🔹 OpenAI call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
