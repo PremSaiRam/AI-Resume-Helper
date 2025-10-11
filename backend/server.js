@@ -24,7 +24,7 @@ app.use(
     secret: "resume-helper-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 1 day
+    cookie: { maxAge: 24 * 60 * 60 * 1000 },
   })
 );
 
@@ -32,7 +32,6 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// ✅ Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -47,13 +46,14 @@ passport.use(
   )
 );
 
-// 🔹 Root route to confirm server running
-app.get("/", (req, res) => {
-  res.send("Backend is running ✅");
-});
-
-// 🔹 Auth Routes
-app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+// ------------------ AUTH ROUTES ------------------
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account",
+  })
+);
 
 app.get(
   "/auth/google/callback",
@@ -63,23 +63,22 @@ app.get(
   }
 );
 
-// Get logged-in user info
 app.get("/api/user", (req, res) => {
   if (req.user) res.json(req.user);
   else res.status(401).json({ message: "Not logged in" });
 });
 
-// Logout
-app.get("/logout", (req, res) => {
-  req.logout(() => {
+app.post("/api/logout", (req, res) => {
+  req.logout((err) => {
+    if (err) console.error(err);
     req.session.destroy(() => {
       res.clearCookie("connect.sid");
-      res.json({ message: "Logged out" });
+      res.json({ success: true });
     });
   });
 });
 
-// Resume Analysis
+// ------------------ RESUME ANALYSIS ------------------
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -88,19 +87,25 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const mimetype = req.file.mimetype;
     let resumeText = "";
 
-    if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    if (
+      mimetype ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
       const result = await mammoth.extractRawText({ path: filePath });
       resumeText = result.value;
     } else if (mimetype === "text/plain") {
       resumeText = fs.readFileSync(filePath, "utf-8");
     } else {
       fs.unlinkSync(filePath);
-      return res.status(400).json({ error: "Only DOCX or TXT resumes are supported." });
+      return res
+        .status(400)
+        .json({ error: "Only DOCX or TXT resumes are supported." });
     }
 
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
+    // OpenAI call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -146,6 +151,9 @@ ${resumeText}`,
     res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
+
+// ------------------ ROOT ------------------
+app.get("/", (req, res) => res.send("✅ Backend is running"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
