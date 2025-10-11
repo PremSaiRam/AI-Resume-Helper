@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import session from "express-session";
 import cors from "cors";
@@ -11,36 +10,28 @@ import fetch from "node-fetch";
 import mammoth from "mammoth";
 
 dotenv.config();
-
 const app = express();
 
-// -------------------- CORS --------------------
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // front-end URL
-    credentials: true, // allow cookies
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
   })
 );
 
-// -------------------- Session --------------------
 app.use(
   session({
     secret: "resume-helper-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production", // HTTPS only
-      httpOnly: true,
-      sameSite: "none", // important for cross-origin
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-    },
   })
 );
 
-// -------------------- Passport --------------------
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(express.json());
 
+// Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -51,17 +42,11 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_REDIRECT_URI,
     },
-    (accessToken, refreshToken, profile, done) => {
-      // Use displayName from Google profile
-      if (!profile.displayName) {
-        profile.displayName = profile.emails?.[0]?.value.split("@")[0] || "User";
-      }
-      done(null, profile);
-    }
+    (accessToken, refreshToken, profile, done) => done(null, profile)
   )
 );
 
-// -------------------- Auth Routes --------------------
+// Auth Routes
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -71,32 +56,41 @@ app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    // redirect to frontend with logged_in flag
-    res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
+    if (!req.session.displayName) {
+      res.redirect(`${process.env.FRONTEND_URL}?ask_name=true`);
+    } else {
+      res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
+    }
   }
 );
 
-// -------------------- Get Logged-in User --------------------
-app.get("/api/user", (req, res) => {
-  if (req.user) {
-    res.json(req.user);
-  } else {
-    res.status(401).json({ message: "Not logged in" });
-  }
+// Save display name
+app.post("/api/displayName", (req, res) => {
+  const { displayName } = req.body;
+  if (!displayName || !req.user) return res.status(400).json({ error: "Invalid" });
+  req.session.displayName = displayName.trim();
+  res.json({ success: true });
 });
 
-// -------------------- Logout --------------------
+// Get current user
+app.get("/api/user", (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  res.json({
+    ...req.user,
+    displayName: req.session.displayName || null,
+  });
+});
+
+// Logout
 app.get("/logout", (req, res) => {
   req.logout(() => {
-    // destroy session and clear cookie
     req.session.destroy(() => {
-      res.clearCookie("connect.sid", { path: "/", sameSite: "none", secure: process.env.NODE_ENV === "production" });
       res.redirect(process.env.FRONTEND_URL);
     });
   });
 });
 
-// -------------------- Resume Analysis --------------------
+// Resume Analysis
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -118,7 +112,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
-    // OpenAI GPT-4o-mini call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -151,6 +144,7 @@ ${resumeText}`,
     const result = await response.json();
     const analysisText = result.choices?.[0]?.message?.content || "{}";
     let analysisJSON;
+
     try {
       analysisJSON = JSON.parse(analysisText);
     } catch {
@@ -164,6 +158,5 @@ ${resumeText}`,
   }
 });
 
-// -------------------- Start Server --------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
