@@ -1,36 +1,36 @@
 import React from "react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import jwtDecode from "jwt-decode"; // ✅ default import for your version
+// ✅ FIX: use default import, not named
+import jwt_decode from "jwt-decode";
 
 export default function Login() {
   const handleSuccess = (credentialResponse) => {
     try {
-      const data = jwtDecode(credentialResponse.credential);
+      const data = jwt_decode(credentialResponse.credential);
 
-      // Save Google user info
-      localStorage.setItem("user", JSON.stringify(data));
-
-      // Ask for display name once
+      // Ask for display name if not stored
       let displayName = localStorage.getItem("displayName");
       if (!displayName) {
         displayName = prompt("Enter your display name:");
         if (displayName) {
           localStorage.setItem("displayName", displayName);
+        } else {
+          displayName = data.name || "User";
         }
       }
 
-      // Redirect to dashboard
+      localStorage.setItem("user", JSON.stringify(data));
       window.location.href = "/dashboard";
-    } catch (error) {
-      console.error("Login failed:", error);
-      alert("Login failed. Please try again.");
+    } catch (err) {
+      console.error("JWT Decode failed:", err);
+      alert("Login failed. Try again!");
     }
   };
 
   return (
     <div
       style={{
-        backgroundColor: "#0088cc", // 🦚 peacock blue
+        backgroundColor: "#0088cc",
         height: "100vh",
         display: "flex",
         flexDirection: "column",
@@ -39,39 +39,22 @@ export default function Login() {
         color: "white",
       }}
     >
-      <h1
-        style={{
-          marginBottom: "20px",
-          fontSize: "2.5rem",
-          fontWeight: "bold",
-          letterSpacing: "1px",
-        }}
-      >
-        AI Resume Helper
-      </h1>
-
+      <h1 style={{ marginBottom: "20px", fontSize: "2rem" }}>AI Resume Helper</h1>
       <div
         style={{
           backgroundColor: "white",
-          padding: "30px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
+          padding: "25px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
         }}
       >
-        <p style={{ color: "#333", marginBottom: "15px", fontWeight: "500" }}>
-          Continue with Google
-        </p>
-
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
           <GoogleLogin
             onSuccess={handleSuccess}
             onError={() => alert("Login Failed")}
             useOneTap={false}
-            ux_mode="popup"
-            prompt="select_account" // ✅ always show choose-account dialog
+            // ✅ Forces Google to show account picker
+            prompt="select_account"
           />
         </GoogleOAuthProvider>
       </div>
