@@ -55,7 +55,10 @@ passport.use(
 // 🔹 Auth Routes
 app.get(
   "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account", // ✅ forces account chooser
+  })
 );
 
 app.get(
@@ -64,13 +67,28 @@ app.get(
   (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
 );
 
+// 🔹 Logout
+app.get("/logout", (req, res) => {
+  req.logout(err => {
+    if (err) return res.status(500).send("Logout failed");
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid"); // remove session cookie
+      res.redirect(process.env.FRONTEND_URL);
+    });
+  });
+});
+
 // 🔹 API: get logged-in user
 app.get("/api/user", (req, res) => {
   if (!req.user) return res.status(401).json({ message: "Not logged in" });
 
   // normalize profile for frontend
   const profile = {
-    displayName: req.user.displayName || req.user.name || req.user.emails?.[0]?.value?.split("@")[0] || "User",
+    displayName:
+      req.user.displayName ||
+      req.user.name ||
+      req.user.emails?.[0]?.value?.split("@")[0] ||
+      "User",
     emails: req.user.emails || [],
     photos:
       req.user.photos?.length > 0
@@ -78,20 +96,16 @@ app.get("/api/user", (req, res) => {
         : [
             {
               value: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                req.user.displayName || req.user.name || req.user.emails?.[0]?.value?.split("@")[0] || "User"
+                req.user.displayName ||
+                  req.user.name ||
+                  req.user.emails?.[0]?.value?.split("@")[0] ||
+                  "User"
               )}&background=2f9bff&color=fff&size=128`,
             },
           ],
   };
 
   res.json(profile);
-});
-
-// 🔹 Logout route
-app.get("/logout", (req, res) => {
-  req.logout(() => {
-    res.redirect(process.env.FRONTEND_URL);
-  });
 });
 
 // 🔹 Resume Analysis Route
@@ -103,14 +117,19 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const mimetype = req.file.mimetype;
     let resumeText = "";
 
-    if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    if (
+      mimetype ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
       const result = await mammoth.extractRawText({ path: filePath });
       resumeText = result.value;
     } else if (mimetype === "text/plain") {
       resumeText = fs.readFileSync(filePath, "utf-8");
     } else {
       fs.unlinkSync(filePath);
-      return res.status(400).json({ error: "Only DOCX or TXT resumes are supported." });
+      return res
+        .status(400)
+        .json({ error: "Only DOCX or TXT resumes are supported." });
     }
 
     fs.unlinkSync(filePath);
