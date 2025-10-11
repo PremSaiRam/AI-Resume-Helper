@@ -7,25 +7,31 @@ const BACKEND_URL = "https://ai-resume-helper-35j6.onrender.com";
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [displayName, setDisplayName] = useState(localStorage.getItem("displayName") || "");
 
   useEffect(() => {
+    // Check localStorage first
+    const localName = localStorage.getItem("displayName");
+    if (localName) {
+      setUser({ displayName: localName });
+      return;
+    }
+
+    // If redirected after Google login
     const params = new URLSearchParams(window.location.search);
     const loggedIn = params.get("logged_in");
-    if (loggedIn) {
+    if (loggedIn && !user) {
       fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
         .then((r) => r.json())
         .then((data) => {
-          setUser({ ...data, displayName });
+          // Use displayName from Google profile
+          const name = data.displayName || data.emails?.[0]?.value?.split("@")[0] || "User";
+          localStorage.setItem("displayName", name);
+          setUser({ displayName: name });
           window.history.replaceState({}, document.title, "/");
         })
-        .catch(console.log);
+        .catch(console.error);
     }
-  }, [displayName]);
+  }, []);
 
-  const handleLoginName = (name) => setDisplayName(name);
-
-  if (user) return <Dashboard user={user} />;
-
-  return <Login onLoginName={handleLoginName} />;
+  return user ? <Dashboard user={user} /> : <Login onLogin={setUser} />;
 }
