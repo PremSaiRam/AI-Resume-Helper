@@ -7,20 +7,21 @@ export default function Dashboard({ user }) {
   const [history, setHistory] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Load history from localStorage
+  // Load from browser storage
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory") || "[]");
     setHistory(saved);
   }, []);
 
-  // Save to localStorage whenever history updates
+  // Save back to storage
   useEffect(() => {
     localStorage.setItem("resumeHistory", JSON.stringify(history));
   }, [history]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) return alert("Please select a resume file first!");
+    if (!file) return alert("Please select a resume first!");
+
     setLoading(true);
     setAnalysis(null);
 
@@ -28,16 +29,17 @@ export default function Dashboard({ user }) {
     formData.append("resume", file);
 
     try {
-      const res = await fetch("http://localhost:10000/analyze", {
+      // Change below URL if your backend runs on a different domain
+      const res = await fetch("https://your-render-backend-url.com/analyze", {
         method: "POST",
         body: formData,
       });
+
       const data = await res.json();
       const result = data.text;
 
       if (result?.score) {
         setAnalysis(result);
-
         const newEntry = {
           id: Date.now(),
           name: file.name,
@@ -47,7 +49,6 @@ export default function Dashboard({ user }) {
           suggestions: result.suggestions,
           date: new Date().toLocaleString(),
         };
-
         setHistory([newEntry, ...history]);
       } else {
         setAnalysis({ text: "No valid analysis returned." });
@@ -60,48 +61,70 @@ export default function Dashboard({ user }) {
     }
   };
 
-  const filteredHistory = history.filter((h) =>
-    h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(h.score).includes(searchTerm)
+  const filteredHistory = history.filter(
+    (h) =>
+      h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(h.score).includes(searchTerm)
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Main Section */}
-      <div className="flex-1 p-6">
-        <h1 className="text-2xl font-bold mb-4 text-blue-600">
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f5f6fa" }}>
+      {/* Main Content */}
+      <div style={{ flex: 1, padding: "2rem" }}>
+        <h1 style={{ color: "#007bff", fontWeight: "bold" }}>
           Welcome, {user.name} 🎉
         </h1>
 
         <form
           onSubmit={handleUpload}
-          className="bg-white p-6 rounded-2xl shadow-md"
+          style={{
+            background: "#fff",
+            padding: "1.5rem",
+            borderRadius: "10px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            marginTop: "1.5rem",
+          }}
         >
           <input
             type="file"
             accept=".docx,.txt"
             onChange={(e) => setFile(e.target.files[0])}
-            className="mb-4"
+            style={{ marginBottom: "1rem" }}
           />
+          <br />
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
+            style={{
+              background: "#007bff",
+              color: "#fff",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
           >
             Analyze Resume
           </button>
         </form>
 
         {loading && (
-          <p className="mt-4 text-blue-600 font-semibold">
+          <p style={{ color: "#007bff", marginTop: "1rem" }}>
             Analyzing resume... please wait ⏳
           </p>
         )}
 
         {analysis && (
-          <div className="bg-white mt-6 p-6 rounded-xl shadow">
-            <h2 className="text-xl font-bold text-blue-700 mb-3">
-              📊 Resume Analysis
-            </h2>
+          <div
+            style={{
+              background: "#fff",
+              padding: "1.5rem",
+              borderRadius: "10px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              marginTop: "1.5rem",
+            }}
+          >
+            <h3 style={{ color: "#007bff" }}>📊 Resume Analysis</h3>
             {analysis.score ? (
               <>
                 <p><strong>Score:</strong> {analysis.score}/100</p>
@@ -117,33 +140,68 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* History Sidebar */}
-      <div className="w-1/3 bg-white p-6 border-l shadow-md">
-        <h2 className="text-lg font-bold mb-3 text-blue-700">📁 Resume History</h2>
+      <div
+        style={{
+          width: "350px",
+          background: "#fff",
+          borderLeft: "1px solid #ddd",
+          padding: "1.5rem",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
+          overflowY: "auto",
+        }}
+      >
+        <h2 style={{ color: "#007bff", marginBottom: "0.5rem" }}>
+          📁 Resume History
+        </h2>
         <input
           type="text"
           placeholder="Search by name or score..."
-          className="border p-2 w-full mb-4 rounded-lg"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "8px",
+            marginBottom: "1rem",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
-        <div className="max-h-[70vh] overflow-y-auto space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {filteredHistory.length > 0 ? (
             filteredHistory.map((item) => (
               <div
                 key={item.id}
                 onClick={() => setAnalysis(item)}
-                className="p-3 border rounded-lg hover:bg-blue-50 cursor-pointer transition"
+                style={{
+                  border: "1px solid #eee",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  transition: "all 0.3s",
+                  background: "#fafafa",
+                }}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.background = "#e9f3ff")
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.background = "#fafafa")
+                }
               >
-                <p className="font-semibold">{item.name}</p>
-                <p className="text-sm text-gray-600">
-                  Score: <span className="font-bold text-blue-600">{item.score}</span>
+                <strong>{item.name}</strong>
+                <p style={{ fontSize: "0.9em", color: "#555" }}>
+                  Score:{" "}
+                  <span style={{ color: "#007bff", fontWeight: "bold" }}>
+                    {item.score}
+                  </span>
                 </p>
-                <p className="text-xs text-gray-400">{item.date}</p>
+                <p style={{ fontSize: "0.75em", color: "#aaa" }}>{item.date}</p>
               </div>
             ))
           ) : (
-            <p className="text-gray-500 text-sm">No previous analyses found.</p>
+            <p style={{ color: "#777", fontSize: "0.9em" }}>
+              No previous analyses found.
+            </p>
           )}
         </div>
       </div>
