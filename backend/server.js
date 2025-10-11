@@ -31,7 +31,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// ✅ Passport setup
+// Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -46,17 +46,31 @@ passport.use(
   )
 );
 
-// 🔹 Auth Routes
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+// Auth routes
+app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
 );
+
+app.get("/api/user", (req, res) => {
+  if (req.user) {
+    const userWithName = { ...req.user, displayName: req.session.displayName || req.user.displayName || null };
+    res.json(userWithName);
+  } else {
+    res.status(401).json({ message: "Not logged in" });
+  }
+});
+
+app.post("/api/set-name", (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ message: "Name required" });
+  req.session.displayName = name;
+  res.json({ message: "Name saved" });
+});
 
 // Logout
 app.get("/logout", (req, res) => {
@@ -67,26 +81,7 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// Get user
-app.get("/api/user", (req, res) => {
-  if (req.user) res.json(req.user);
-  else res.status(401).json({ message: "Not logged in" });
-});
-
-// Set display name
-app.post("/api/set-name", (req, res) => {
-  if (!req.session.passport || !req.session.passport.user) {
-    return res.status(401).json({ message: "Not logged in" });
-  }
-
-  const { name } = req.body;
-  if (!name || !name.trim()) return res.status(400).json({ message: "Name required" });
-
-  req.session.passport.user.displayName = name.trim();
-  res.json({ message: "Display name saved" });
-});
-
-// 🔹 Resume Analysis Route
+// Resume analyze route
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -108,11 +103,10 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     fs.unlinkSync(filePath);
     if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
 
-    // 🔹 OpenAI call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -128,7 +122,6 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
 "weaknesses": [...],
 "suggestions": [...]
 }
-
 Resume:
 ${resumeText}`,
           },
