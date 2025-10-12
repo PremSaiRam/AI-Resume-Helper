@@ -2,146 +2,75 @@ import express from "express";
 import session from "express-session";
 import cors from "cors";
 import passport from "passport";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import multer from "multer";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
 dotenv.config();
-
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-// ---------- Middleware ----------
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true
+}));
+
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(
-  cors({
-    origin: [process.env.FRONTEND_URL],
-    credentials: true,
-  })
-);
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-  })
-);
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ---------- MongoDB Connection ----------
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB Error:", err));
+// Passport configuration
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj, done) => done(null, obj));
 
-// ---------- User Schema ----------
-const userSchema = new mongoose.Schema({
-  googleId: String,
-  email: String,
-  name: String,
-  photo: String,
-});
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL
+  },
+  (accessToken, refreshToken, profile, done) => {
+    // Here you can save the user profile in your DB if needed
+    return done(null, profile);
+  }
+));
 
-const User = mongoose.model("User", userSchema);
+// Routes
+app.get("/", (req, res) => res.send("✅ AI Resume Helper Backend is Running!"));
 
-// ---------- Passport Google Strategy ----------
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        let user = await User.findOne({ googleId: profile.id });
-        if (!user) {
-          user = new User({
-            googleId: profile.id,
-            email: profile.emails[0].value,
-            name: profile.displayName,
-            photo: profile.photos[0].value,
-          });
-          await user.save();
-        }
-        return done(null, user);
-      } catch (err) {
-        return done(err, null);
-      }
-    }
-  )
+// Google OAuth login
+app.get("/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })
 );
 
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser(async (id, done) => {
-  const user = await User.findById(id);
-  done(null, user);
-});
-
-// ---------- Routes ----------
-app.get("/", (req, res) => {
-  res.send("✅ AI Resume Helper Backend is Running!");
-});
-
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
-
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/login/failed",
-  }),
+// Google OAuth callback
+app.get("/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL}/login` }),
   (req, res) => {
+    // Redirect to frontend dashboard after successful login
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   }
 );
 
+// Logout
 app.get("/logout", (req, res) => {
-  req.logout((err) => {
-    if (err) return res.status(500).send("Logout failed");
-    req.session.destroy(() => {
-      res.redirect(process.env.FRONTEND_URL);
-    });
+  req.logout(() => {
+    res.redirect(process.env.FRONTEND_URL);
   });
 });
 
-app.get("/api/user", (req, res) => {
-  if (!req.user) return res.status(401).json({ message: "Not logged in" });
-  res.json(req.user);
-});
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("✅ MongoDB connected successfully"))
+.catch(err => console.error("❌ MongoDB Error:", err));
 
-// ---------- Profile Update ----------
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-app.post("/api/profile", upload.single("photo"), async (req, res) => {
-  try {
-    const { email, name } = req.body;
-    const photo = req.file ? req.file.buffer.toString("base64") : null;
-
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    if (name) user.name = name;
-    if (photo) user.photo = `data:image/png;base64,${photo}`;
-    await user.save();
-
-    res.json({ message: "Profile updated", user });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Profile update failed" });
-  }
-});
-
-// ---------- Server ----------
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
