@@ -64,26 +64,22 @@ function Sparkline({ values = [], width = 200, height = 48, color = "#2f9bff" })
   );
 }
 
-export default function Dashboard({ user }) {
+export default function Dashboard() {
   const [analysis, setAnalysis] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  // load history
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("resumeHistory") || "[]");
     setHistory(saved);
   }, []);
 
-  // save history
   useEffect(() => {
     localStorage.setItem("resumeHistory", JSON.stringify(history));
   }, [history]);
 
-  // handle new result from uploader
   const onResult = (result) => {
-    // result expected to be JSON { score, strengths, weaknesses, suggestions } or text fallback
     if (!result) return;
     setAnalysis(result);
     if (result?.score) {
@@ -100,10 +96,8 @@ export default function Dashboard({ user }) {
     }
   };
 
-  // wrapper so uploader shows saving/working
   const onSaving = (v) => setLoading(v);
 
-  // delete history
   const clearHistory = () => {
     if (!confirm("Delete all saved resume history?")) return;
     setHistory([]);
@@ -116,26 +110,22 @@ export default function Dashboard({ user }) {
     return h.name.toLowerCase().includes(q) || String(h.score).includes(q);
   });
 
-  // derive sparkline data (last 10 scores)
   const sparkValues = useMemo(() => history.slice(0, 10).map((h) => h.score).reverse(), [history]);
   const latestScore = history[0]?.score ?? null;
 
-  // logout
   const handleLogout = () => {
-    // redirect to backend logout which returns to login page
     window.location.href = `${BACKEND_URL}/logout`;
   };
-
-  // pick name and photo
-  const displayName = user?.displayName || user?.name || (user?.emails && user.emails[0]?.value) || "User";
-  const photo = user?.photos?.[0]?.value || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2f9bff&color=fff&size=128`;
 
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={styles.logoBox}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#2f9bff"/><path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff"/></svg>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" fill="#2f9bff" />
+              <path d="M6 12c0-3.314 2.686-6 6-6v6H6z" fill="#7b2cff" />
+            </svg>
           </div>
           <div>
             <div style={{ fontWeight: 800, color: "#052f2f" }}>AI Resume Helper</div>
@@ -143,28 +133,27 @@ export default function Dashboard({ user }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ textAlign: "right", marginRight: 8 }}>
-            <div style={{ fontWeight: 700 }}>{displayName}</div>
-            <div style={{ fontSize: 12, color: "#164e4e" }}>{user?.emails?.[0]?.value || ""}</div>
-          </div>
-
-          <img src={photo} alt="avatar" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", boxShadow: "0 6px 18px rgba(0,0,0,0.12)" }} />
-
-          <button onClick={handleLogout} style={styles.logoutBtn}>
-            Logout
-          </button>
-        </div>
+        <button onClick={handleLogout} style={styles.logoutBtn}>
+          Logout
+        </button>
       </header>
 
       <main style={styles.main}>
-        {/* Left content */}
         <section style={styles.left}>
+          {/* ✅ Replaced user info with centered welcome text */}
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <h2 style={{ color: "#063b3b", fontWeight: 800, fontSize: "1.6rem" }}>
+              Welcome to AI Resume Analyzer
+            </h2>
+          </div>
+
           <div style={styles.peacockCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h2 style={{ margin: 0, color: "#ffffff" }}>Upload your resume</h2>
-                <p style={{ margin: "6px 0 0 0", color: "#dff7f6" }}>Drop a DOCX or TXT file and get a score + suggestions.</p>
+                <p style={{ margin: "6px 0 0 0", color: "#dff7f6" }}>
+                  Drop a DOCX or TXT file and get a score + suggestions.
+                </p>
               </div>
 
               <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
@@ -205,7 +194,6 @@ export default function Dashboard({ user }) {
           )}
         </section>
 
-        {/* Right History */}
         <aside style={styles.right}>
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 800, color: "#073737", fontSize: 16 }}>Resume History</div>
@@ -226,11 +214,7 @@ export default function Dashboard({ user }) {
               <div style={{ color: "#667" }}>No past analyses yet.</div>
             ) : (
               filtered.map((it) => (
-                <div
-                  key={it.id}
-                  onClick={() => setAnalysis(it)}
-                  style={styles.cardRow}
-                >
+                <div key={it.id} onClick={() => setAnalysis(it)} style={styles.cardRow}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{it.name}</div>
                     <div style={{ fontSize: 12, color: "#356" }}>{it.date}</div>
@@ -280,7 +264,6 @@ const styles = {
     boxShadow: "0 6px 18px rgba(47,155,255,0.14)",
   },
   logoutBtn: {
-    marginLeft: 12,
     background: "linear-gradient(90deg,#ff7b7b,#ffb36b)",
     border: "none",
     padding: "8px 12px",
@@ -295,9 +278,7 @@ const styles = {
     padding: "28px 36px",
     alignItems: "flex-start",
   },
-  left: {
-    flex: 1,
-  },
+  left: { flex: 1 },
   peacockCard: {
     borderRadius: 16,
     padding: 20,
@@ -340,7 +321,6 @@ const styles = {
     gap: 12,
     alignItems: "center",
     cursor: "pointer",
-    transition: "transform 160ms ease, box-shadow 160ms ease",
   },
   deleteButton: {
     background: "#fff",
