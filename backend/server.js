@@ -2,26 +2,27 @@ import express from "express";
 import session from "express-session";
 import cors from "cors";
 import passport from "passport";
-import GoogleStrategy from "passport-google-oauth20";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import multer from "multer";
 import fs from "fs";
-import fetch from "node-fetch";
-import mammoth from "mammoth";
 
 dotenv.config();
+
 const app = express();
 
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-  })
-);
+// ---------- Middleware ----------
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  origin: ["http://localhost:5173", "https://ai-resume-helper-frontend.onrender.com"],
+  credentials: true,
+}));
 
 app.use(
   session({
-    secret: "resume-helper-secret",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
   })
@@ -29,108 +30,114 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-app.use(express.json());
 
-// ✅ Passport setup
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((obj, done) => done(null, obj));
+// ---------- MongoDB Connection ----------
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("✅ MongoDB Connected"))
+.catch(err => console.error("❌ MongoDB Error:", err));
 
+// ---------- User Schema ----------
+const userSchema = new mongoose.Schema({
+  googleId: String,
+  email: String,
+  name: String,
+  photo: String,
+});
+
+const User = mongoose.model("User", userSchema);
+
+// ---------- Passport Google Strategy ----------
 passport.use(
-  new GoogleStrategy.Strategy(
+  new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_REDIRECT_URI,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
     },
-    (accessToken, refreshToken, profile, done) => done(null, profile)
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let user = await User.findOne({ googleId: profile.id });
+        if (!user) {
+          user = new User({
+            googleId: profile.id,
+            email: profile.emails[0].value,
+            name: profile.displayName,
+            photo: profile.photos[0].value,
+          });
+          await user.save();
+        }
+        return done(null, user);
+      } catch (err) {
+        return done(err, null);
+      }
+    }
   )
 );
 
-// 🔹 Auth Routes
-app.get(
-  "/auth/google",
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  const user = await User.findById(id);
+  done(null, user);
+});
+
+// ---------- Routes ----------
+app.get("/", (req, res) => {
+  res.send("✅ AI Resume Helper Backend is Running!");
+});
+
+app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
+app.get("/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login/failed",
+  }),
+  (req, res) => {
+    res.redirect("https://ai-resume-helper-frontend.onrender.com/dashboard");
+  }
 );
 
-app.get("/api/user", (req, res) => {
-  if (req.user) res.json(req.user);
-  else res.status(401).json({ message: "Not logged in" });
+app.get("/logout", (req, res) => {
+  req.logout(err => {
+    if (err) return res.status(500).send("Logout failed");
+    req.session.destroy(() => {
+      res.redirect("https://ai-resume-helper-frontend.onrender.com");
+    });
+  });
 });
 
-// 🔹 Resume Analysis Route
-const upload = multer({ dest: "uploads/" });
+app.get("/api/user", (req, res) => {
+  if (!req.user) return res.status(401).json({ message: "Not logged in" });
+  res.json(req.user);
+});
 
-app.post("/analyze", upload.single("resume"), async (req, res) => {
+// ---------- Profile Update (Name + Photo) ----------
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+app.post("/api/profile", upload.single("photo"), async (req, res) => {
   try {
-    const filePath = req.file.path;
-    const mimetype = req.file.mimetype;
-    let resumeText = "";
+    const { email, name } = req.body;
+    const photo = req.file ? req.file.buffer.toString("base64") : null;
 
-    if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      const result = await mammoth.extractRawText({ path: filePath });
-      resumeText = result.value;
-    } else if (mimetype === "text/plain") {
-      resumeText = fs.readFileSync(filePath, "utf-8");
-    } else {
-      fs.unlinkSync(filePath);
-      return res.status(400).json({ error: "Only DOCX or TXT resumes are supported." });
-    }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    fs.unlinkSync(filePath);
-    if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
+    if (name) user.name = name;
+    if (photo) user.photo = `data:image/png;base64,${photo}`;
+    await user.save();
 
-    // 🔹 OpenAI call
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are a professional resume analyzer." },
-          {
-            role: "user",
-            content: `Analyze this resume and return ONLY JSON with:
-{
-"score": <0-100>,
-"strengths": [...],
-"weaknesses": [...],
-"suggestions": [...]
-}
-
-Resume:
-${resumeText}`,
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 1000,
-      }),
-    });
-
-    const result = await response.json();
-    const analysisText = result.choices?.[0]?.message?.content || "{}";
-    let analysisJSON;
-
-    try {
-      analysisJSON = JSON.parse(analysisText);
-    } catch {
-      analysisJSON = { text: analysisText };
-    }
-
-    res.json({ text: analysisJSON });
+    res.json({ message: "Profile updated", user });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to analyze resume" });
+    res.status(500).json({ message: "Profile update failed" });
   }
 });
 
+// ---------- Server ----------
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
