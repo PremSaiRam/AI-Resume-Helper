@@ -1,16 +1,20 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Dashboard from "./components/Dashboard";
-import Profile from "./pages/Profile";
+function ErrorBoundary({ children }) {
+  try {
+    return children;
+  } catch (err) {
+    return <div style={{ color: "red" }}>Error: {err.message}</div>;
+  }
+}
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-      </Routes>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
-
-export default App;
