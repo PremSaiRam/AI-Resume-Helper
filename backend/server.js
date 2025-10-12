@@ -15,11 +15,9 @@ const app = express();
 // ---------- Middleware ----------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://<your-frontend-url>"
-  ],
+  origin: [process.env.FRONTEND_URL || "http://localhost:5173"],
   credentials: true,
 }));
 
@@ -58,7 +56,9 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL: process.env.GOOGLE_REDIRECT_URI,
+      scope: ["profile", "email"],
+      prompt: "select_account" // Forces account selection
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -96,9 +96,11 @@ app.get("/auth/google",
 );
 
 app.get("/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login/failed" }),
+  passport.authenticate("google", {
+    failureRedirect: "/login/failed",
+  }),
   (req, res) => {
-    res.redirect("https://<your-frontend-url>/dashboard");
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   }
 );
 
@@ -106,7 +108,7 @@ app.get("/logout", (req, res) => {
   req.logout(err => {
     if (err) return res.status(500).send("Logout failed");
     req.session.destroy(() => {
-      res.redirect("https://<your-frontend-url>");
+      res.redirect(process.env.FRONTEND_URL || "/");
     });
   });
 });
@@ -116,7 +118,7 @@ app.get("/api/user", (req, res) => {
   res.json(req.user);
 });
 
-// ---------- Profile Update ----------
+// ---------- Profile Update (Name + Photo) ----------
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
