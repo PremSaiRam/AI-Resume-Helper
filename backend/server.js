@@ -8,10 +8,13 @@ import multer from "multer";
 import fs from "fs";
 import fetch from "node-fetch";
 import mammoth from "mammoth";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 const app = express();
 
+// -------------------- Middleware --------------------
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
@@ -31,7 +34,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// ✅ Passport setup
+// -------------------- Passport Setup --------------------
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -46,7 +49,7 @@ passport.use(
   )
 );
 
-// 🔹 Auth Routes
+// -------------------- Auth Routes --------------------
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -63,7 +66,17 @@ app.get("/api/user", (req, res) => {
   else res.status(401).json({ message: "Not logged in" });
 });
 
-// 🔹 Resume Analysis Route
+// ✅ Logout route
+app.get("/auth/logout", (req, res) => {
+  req.logout(() => {
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.redirect(process.env.FRONTEND_URL);
+    });
+  });
+});
+
+// -------------------- Resume Analysis Route --------------------
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -72,24 +85,30 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     const mimetype = req.file.mimetype;
     let resumeText = "";
 
-    if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    if (
+      mimetype ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
       const result = await mammoth.extractRawText({ path: filePath });
       resumeText = result.value;
     } else if (mimetype === "text/plain") {
       resumeText = fs.readFileSync(filePath, "utf-8");
     } else {
       fs.unlinkSync(filePath);
-      return res.status(400).json({ error: "Only DOCX or TXT resumes are supported." });
+      return res
+        .status(400)
+        .json({ error: "Only DOCX or TXT resumes are supported." });
     }
 
     fs.unlinkSync(filePath);
-    if (!resumeText.trim()) return res.json({ text: "No text found in resume." });
+    if (!resumeText.trim())
+      return res.json({ text: "No text found in resume." });
 
-    // 🔹 OpenAI call
+    // 🔹 OpenAI API Call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -132,5 +151,17 @@ ${resumeText}`,
   }
 });
 
+// -------------------- Serve Frontend --------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendPath = path.join(__dirname, "../frontend/dist");
+
+app.use(express.static(frontendPath));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
+
+// -------------------- Start Server --------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
