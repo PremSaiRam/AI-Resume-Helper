@@ -13,13 +13,13 @@ const Profile = () => {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/profile`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name }),
         credentials: "include",
+        body: JSON.stringify({ name }),
       });
 
       if (res.ok) {
@@ -37,7 +37,6 @@ const Profile = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-2xl shadow-lg w-96">
         <h2 className="text-2xl font-semibold text-center mb-4">Update Profile</h2>
-
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="text"
@@ -46,7 +45,6 @@ const Profile = () => {
             onChange={(e) => setName(e.target.value)}
             className="border p-2 rounded"
           />
-
           <button
             type="submit"
             className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
@@ -54,7 +52,6 @@ const Profile = () => {
             Save Profile
           </button>
         </form>
-
         {message && <p className="text-center text-gray-700 mt-3">{message}</p>}
       </div>
     </div>
