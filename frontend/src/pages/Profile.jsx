@@ -6,29 +6,21 @@ const Profile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!name) {
       setMessage("Please enter your name");
       return;
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/profile`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/profile`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
+        credentials: "include",
       });
-
-      if (res.ok) {
-        setMessage("Profile updated successfully!");
-      } else {
-        setMessage("Failed to update profile");
-      }
-    } catch (err) {
-      console.error(err);
+      if (res.ok) setMessage("Profile updated successfully!");
+      else setMessage("Failed to update profile");
+    } catch {
       setMessage("Error updating profile");
     }
   };
@@ -45,10 +37,7 @@ const Profile = () => {
             onChange={(e) => setName(e.target.value)}
             className="border p-2 rounded"
           />
-          <button
-            type="submit"
-            className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
-          >
+          <button type="submit" className="bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
             Save Profile
           </button>
         </form>
