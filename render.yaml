@@ -8,16 +8,16 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22.16.0
-      - key: PORT
-        value: 10000
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
-      - key: GOOGLE_REDIRECT_URI
-        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        value: "https://<your-backend-url>/auth/google/callback"
       - key: SESSION_SECRET
         generateValue: true
+      - key: MONGO_URI
+        sync: false
       - key: FRONTEND_URL
         sync: false
 
@@ -26,9 +26,9 @@ services:
     env: node
     rootDir: frontend
     buildCommand: npm install && npm run build
-    startCommand: npm run start
+    startCommand: npm run preview
     envVars:
       - key: NODE_VERSION
         value: 22.16.0
-      - key: VITE_BACKEND_URL
-        sync: false
+      - key: VITE_API_URL
+        value: "https://<your-backend-url>"
