@@ -1,43 +1,42 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
-function Dashboard() {
-  const [user, setUser] = useState(null);
+const Dashboard = () => {
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    fetch("https://ai-resume-helper.onrender.com/api/user", { credentials: "include" })
-      .then(res => res.json())
-      .then(data => setUser(data))
-      .catch(() => setUser(null));
-  }, []);
-
-  const handleLogout = () => {
-    window.location.href = "https://ai-resume-helper.onrender.com/logout";
+  const handleLogout = async () => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/logout`, {
+        method: "GET",
+        credentials: "include",
+      });
+      navigate("/");
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
   };
 
   const openProfile = () => {
-    window.location.href = "/profile";
+    navigate("/profile");
   };
 
   return (
-    <div className="dashboard">
-      {user ? (
-        <>
-          <h2>Welcome, {user.name}</h2>
-          <img
-            src={user.photo}
-            alt="profile"
-            width={60}
-            height={60}
-            onClick={openProfile}
-            style={{ cursor: "pointer", borderRadius: "50%" }}
-          />
-          <button onClick={handleLogout}>Logout</button>
-        </>
-      ) : (
-        <h3>Loading...</h3>
-      )}
+    <div className="p-8 text-center">
+      <h1 className="text-3xl font-bold mb-4">Welcome to AI Resume Helper</h1>
+      <button
+        onClick={openProfile}
+        className="bg-blue-500 text-white px-4 py-2 rounded mr-3 hover:bg-blue-600"
+      >
+        Profile
+      </button>
+      <button
+        onClick={handleLogout}
+        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+      >
+        Logout
+      </button>
     </div>
   );
-}
+};
 
 export default Dashboard;
