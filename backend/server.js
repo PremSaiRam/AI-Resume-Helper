@@ -8,13 +8,11 @@ import multer from "multer";
 import fs from "fs";
 import fetch from "node-fetch";
 import mammoth from "mammoth";
-import path from "path";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 const app = express();
 
-// -------------------- Middleware --------------------
+// ✅ Middleware
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
@@ -24,7 +22,7 @@ app.use(
 
 app.use(
   session({
-    secret: "resume-helper-secret",
+    secret: process.env.SESSION_SECRET || "resume-helper-secret",
     resave: false,
     saveUninitialized: false,
   })
@@ -34,7 +32,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.json());
 
-// -------------------- Passport Setup --------------------
+// ✅ Passport Google Auth
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -49,7 +47,7 @@ passport.use(
   )
 );
 
-// -------------------- Auth Routes --------------------
+// ✅ Authentication Routes
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -58,7 +56,9 @@ app.get(
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
-  (req, res) => res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`)
+  (req, res) => {
+    res.redirect(`${process.env.FRONTEND_URL}?logged_in=true`);
+  }
 );
 
 app.get("/api/user", (req, res) => {
@@ -66,17 +66,13 @@ app.get("/api/user", (req, res) => {
   else res.status(401).json({ message: "Not logged in" });
 });
 
-// ✅ Logout route
-app.get("/auth/logout", (req, res) => {
+app.get("/logout", (req, res) => {
   req.logout(() => {
-    req.session.destroy(() => {
-      res.clearCookie("connect.sid");
-      res.redirect(process.env.FRONTEND_URL);
-    });
+    res.redirect(process.env.FRONTEND_URL);
   });
 });
 
-// -------------------- Resume Analysis Route --------------------
+// ✅ Resume Analyzer Route
 const upload = multer({ dest: "uploads/" });
 
 app.post("/analyze", upload.single("resume"), async (req, res) => {
@@ -104,7 +100,7 @@ app.post("/analyze", upload.single("resume"), async (req, res) => {
     if (!resumeText.trim())
       return res.json({ text: "No text found in resume." });
 
-    // 🔹 OpenAI API Call
+    // ✅ OpenAI API Call
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -146,22 +142,16 @@ ${resumeText}`,
 
     res.json({ text: analysisJSON });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error analyzing resume:", err);
     res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
 
-// -------------------- Serve Frontend --------------------
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const frontendPath = path.join(__dirname, "../frontend/dist");
-
-app.use(express.static(frontendPath));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
+// ✅ Root route (for backend testing)
+app.get("/", (req, res) => {
+  res.json({ message: "AI Resume Helper Backend is running 🚀" });
 });
 
-// -------------------- Start Server --------------------
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
