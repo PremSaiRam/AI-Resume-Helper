@@ -5,20 +5,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    try {
-      await fetch(`${import.meta.env.VITE_API_URL}/logout`, {
-        method: "GET",
-        credentials: "include",
-      });
-      navigate("/");
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
+    await fetch(`${import.meta.env.VITE_BACKEND_URL}/logout`, {
+      method: "GET",
+      credentials: "include",
+    });
+    navigate("/");
   };
 
-  const openProfile = () => {
-    navigate("/profile");
-  };
+  const openProfile = () => navigate("/profile");
 
   return (
     <div className="p-8 text-center">
