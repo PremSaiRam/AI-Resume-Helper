@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useEffect, useState } from "react";
 import Login from "./components/Login.jsx";
 import Dashboard from "./components/Dashboard.jsx";
@@ -8,21 +9,22 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    // If redirected after Google login, back-end set ?logged_in=true
     const params = new URLSearchParams(window.location.search);
     const loggedIn = params.get("logged_in");
 
-    // Always try to fetch user (so refresh keeps session)
-    fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data && data.displayName) {
+    if (loggedIn && !user) {
+      fetch(`${BACKEND_URL}/api/user`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((data) => {
           setUser(data);
-        } else if (loggedIn) {
-          // handle post-login case
+          // remove query param for cleanliness
           window.history.replaceState({}, document.title, "/");
-        }
-      })
-      .catch(() => {});
+        })
+        .catch((e) => {
+          console.log("user fetch failed", e);
+        });
+    }
   }, []);
 
   return user ? <Dashboard user={user} /> : <Login />;
