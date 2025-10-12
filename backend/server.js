@@ -16,7 +16,10 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: ["http://localhost:5173", "https://ai-resume-helper-frontend.onrender.com"],
+  origin: [
+    "http://localhost:5173",
+    "https://<your-frontend-url>"
+  ],
   credentials: true,
 }));
 
@@ -93,11 +96,9 @@ app.get("/auth/google",
 );
 
 app.get("/auth/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/login/failed",
-  }),
+  passport.authenticate("google", { failureRedirect: "/login/failed" }),
   (req, res) => {
-    res.redirect("https://ai-resume-helper-frontend.onrender.com/dashboard");
+    res.redirect("https://<your-frontend-url>/dashboard");
   }
 );
 
@@ -105,7 +106,7 @@ app.get("/logout", (req, res) => {
   req.logout(err => {
     if (err) return res.status(500).send("Logout failed");
     req.session.destroy(() => {
-      res.redirect("https://ai-resume-helper-frontend.onrender.com");
+      res.redirect("https://<your-frontend-url>");
     });
   });
 });
@@ -115,7 +116,7 @@ app.get("/api/user", (req, res) => {
   res.json(req.user);
 });
 
-// ---------- Profile Update (Name + Photo) ----------
+// ---------- Profile Update ----------
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
